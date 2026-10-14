@@ -1,0 +1,9 @@
+{
+  "cluster": ["monitor", "read_ilm", "read_pipeline", "manage_index_templates"],
+  "indices": [
+    {
+      "names": ["filebeat-*", "metricbeat-*"],
+      "privileges": ["create_doc", "view_index_metadata", "auto_configure"]
+    }
+  ]
+}
