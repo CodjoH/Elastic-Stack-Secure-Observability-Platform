@@ -1,144 +1,122 @@
-<div align="center">
+# Elastic Stack : Security Hardening
 
-# 🛡️ Elastic Stack — Security Hardening
+![Elastic](https://img.shields.io/badge/Elastic_Stack-7.17.10_→_8.11.4-005571?logo=elastic&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?logo=docker&logoColor=white)
+![TLS](https://img.shields.io/badge/TLS%20%2F%20mTLS-2E7D32)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-**Durcissement et migration d'une Elastic Stack v7 mono-nœud vers un cluster distribué v8.11.4 chiffré de bout en bout**
+Déploiement d'une Elastic Stack **7.17.10** mono-nœud sous Docker, puis durcissement et évolution par étapes jusqu'à un cluster **8.11.4** à deux nœuds, chiffré sur tous les flux, avec une collecte gérée par Fleet.
 
-![Elastic](https://img.shields.io/badge/Elastic_Stack-8.11.4-005571?style=for-the-badge&logo=elastic&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![TLS](https://img.shields.io/badge/TLS%20%2F%20mTLS-Partout-2E7D32?style=for-the-badge&logo=letsencrypt&logoColor=white)
-![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
-![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
+Au départ : pas d'authentification, tout en HTTP, et cinq Beats configurés à la main sur la machine cliente. L'objectif était d'en faire une plateforme exploitable en documentant chaque étape et chaque problème rencontré.
 
-[Architecture](docs/architecture.md) · [Hardening](docs/security-hardening.md) · [Certificats](docs/certificates.md) · [Sauvegarde](docs/backup-restore.md) · [Phases](#-feuille-de-route--9-phases)
+## Résultat
 
-</div>
+- **aucun flux en clair** : HTTPS sur 9200, 5601 et 8220, mTLS entre les nœuds sur 9300, certificats signés par une CA interne
+- **authentification obligatoire**, Kibana connecté avec `kibana_system`, Fleet Server avec un service token
+- **deux nœuds** avec réplicas, arrêt du second nœud testé sans perte de données
+- **Elastic Agent + Fleet** à la place de Filebeat, Metricbeat, Auditbeat, Heartbeat et Packetbeat
+- **montée de version 7.17.10 → 8.11.4** sans perte de données ni coupure de la collecte
 
----
+![agents Fleet](screenshots/kibana/fleet-agents-7.17.10.jpg)
 
-## 📌 Présentation
-
-Ce projet documente la **sécurisation complète** (*Security Hardening*) et la **migration** d'une infrastructure Elastic Stack d'une topologie v7 standard vers une **architecture distribuée v8.11.4 de niveau production**.
-
-Mené comme un *Security Hardening Lab*, il applique trois principes : **moindre privilège**, **chiffrement systématique des flux** et **centralisation de la télémétrie**. Chaque étape est documentée, testée et accompagnée de ses incidents réels et de leur résolution.
-
-## 🎯 Objectifs & résultats
-
-| Objectif | Résultat |
-|---|---|
-| 🔒 **Zéro flux en clair** | HTTPS/TLS sur toutes les API, **mTLS** entre nœuds, CA racine interne |
-| ⚙️ **Haute disponibilité** | Cluster 2 nœuds avec réplication, panne d'un nœud de données testée sans perte de données |
-| 📡 **Modernisation SecOps** | Beats remplacés par **Elastic Agent + Fleet Server**, clés d'API rotatives |
-| 🔄 **Cycle de vie maîtrisé** | Montée de version **v7 ➔ v8** sans perte de données ni rupture de collecte |
-
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 flowchart LR
-    U[👤 Navigateur] -- "HTTPS :5601" --> K[Kibana v8]
-    K -- "HTTPS :9200" --> N1
-    subgraph CLUSTER["Cluster Elasticsearch v8.11.4"]
-        N1[(es-node1<br/>Master / Data)]
-        N2[(es-node2<br/>Data / Réplicas)]
-        N1 <-- "mTLS :9300" --> N2
+    U[Navigateur] -- "HTTPS 5601" --> K[kibana]
+    K -- "HTTPS 9200" --> N1
+    subgraph CLUSTER[cyber-cluster 8.11.4]
+        N1[(elasticsearch<br/>es-node1)]
+        N2[(elasticsearch-node2<br/>es-node2)]
+        N1 <-- "mTLS 9300" --> N2
     end
-    A[Client-Lin01<br/>Elastic Agent] -- "HTTPS :8220" --> FS[Fleet Server<br/>hôte central]
-    A -- "HTTPS :9200" --> N1
-    FS -- "HTTPS :9200" --> N1
+    A[Client-Lin01<br/>Elastic Agent] -- "HTTPS 8220" --> FS[Fleet Server<br/>hôte ELK]
+    A -- "HTTPS 9200" --> N1
+    FS -- "HTTPS 9200" --> N1
 ```
 
-➡️ Détails : [docs/architecture.md](docs/architecture.md)
+Détails : [docs/architecture.md](docs/architecture.md) · compose : [docker-compose.yml](docker-compose.yml)
 
-## 🔐 Matrice de sécurité
+| Flux | Port | Protection |
+|---|---|---|
+| API Elasticsearch | 9200 | HTTPS, certificat de la CA interne, authentification obligatoire |
+| Transport entre nœuds | 9300 | TLS mutuel, `verification_mode: certificate` |
+| Kibana | 5601 | HTTPS, Kibana connecté avec `kibana_system` |
+| Fleet Server | 8220 | HTTPS, service token |
+| Agents vers Fleet | 8220 | HTTPS, clés d'API générées par Fleet |
 
-| Flux | Port | Protocole | Authentification & confiance |
-|---|---|---|---|
-| API Elasticsearch | 9200 | HTTPS | Certificat signé par la CA interne + authentification obligatoire |
-| Transport inter-nœuds | 9300 | mTLS | `verification_mode: certificate`, CA partagée |
-| Kibana | 5601 | HTTPS | Compte restreint `kibana_system` + TLS navigateur |
-| Enrôlement Fleet Server | 8220 | HTTPS | Service token Elasticsearch v8 |
-| Agents ➔ Fleet | 8220 | HTTPS | Clés d'API rotatives générées par Fleet |
+## Étapes
 
-➡️ Détails : [docs/security-hardening.md](docs/security-hardening.md)
+| Phase | Version | Contenu |
+|---|---|---|
+| [00](phases/phase-00-stabilization.md) | 7.17.10 | déploiement initial mono-nœud |
+| [01](phases/phase-01-authentication.md) | 7.17.10 | activation de la sécurité, comptes intégrés |
+| [02](phases/phase-02-http-tls.md) | 7.17.10 | CA interne, HTTPS sur l'API |
+| [03](phases/phase-03-transport-tls.md) | 7.17.10 | TLS mutuel entre les nœuds |
+| [04](phases/phase-04-kibana-https.md) | 7.17.10 | Kibana en HTTPS |
+| [05](phases/phase-05-beats-authentication.md) | 7.17.10 | les 5 Beats en HTTPS avec authentification |
+| [06](phases/phase-06-fleet.md) | 7.17.10 | migration vers Elastic Agent + Fleet |
+| [07](phases/phase-07-cluster.md) | 7.17.10 | second nœud, incident `.security`, test de panne |
+| [08](phases/phase-08-upgrade.md) | 7.17.10 → 8.11.4 | montée de version, incidents agents |
 
-## 🗺️ Feuille de route : 9 phases
+## Problèmes rencontrés
 
-| Phase | Étape | Point clé |
-|:---:|---|---|
-| 00 | [Stabilisation](phases/phase-00-stabilization.md) | Résolution d'une `UnavailableShardsException` sur `.security` |
-| 01 | [Authentification](phases/phase-01-authentication.md) | Fin des accès anonymes, moindre privilège, audit |
-| 02 | [TLS HTTP](phases/phase-02-http-tls.md) | API REST en HTTPS via une CA interne |
-| 03 | [TLS Transport](phases/phase-03-transport-tls.md) | mTLS entre les nœuds |
-| 04 | [Kibana HTTPS](phases/phase-04-kibana-https.md) | HTTPS navigateur + compte `kibana_system` |
-| 05 | [Authentification des Beats](phases/phase-05-beats-authentication.md) | Comptes d'écriture dédiés, keystore |
-| 06 | [Fleet](phases/phase-06-fleet.md) | Migration vers Elastic Agent + Fleet Server |
-| 07 | [Cluster](phases/phase-07-cluster.md) | Ajout d'un 2ᵉ nœud, test de failover |
-| 08 | [Upgrade v8](phases/phase-08-upgrade.md) | Rolling upgrade, mise à niveau des agents à distance |
+| Problème | Cause | Solution |
+|---|---|---|
+| `UnavailableShardsException` sur `.security` | index système indisponible après la réorganisation réseau | réplicas système à 0, puis ajout à chaud du second nœud ([phase 07](phases/phase-07-cluster.md)) |
+| agent local en `DEGRADED` après le passage en 8 | restriction 8.x sur les chemins de CA par défaut | lien symbolique vers `/etc/elastic-agent/certs/elk-ca.crt` ([phase 08](phases/phase-08-upgrade.md)) |
+| erreurs entre agents 7.x et Fleet 8.x | versions mélangées pendant la transition | mise à jour des agents à distance depuis Fleet ([phase 08](phases/phase-08-upgrade.md)) |
 
-## 📂 Structure du dépôt
+## Quelques preuves
+
+| | |
+|---|---|
+| Beats en TLS 1.3 avec vérification de la chaîne | ![](screenshots/validation/beats-test-auditbeat-filebeat.jpg) |
+| Index en `green` avec 1 réplica sur 2 nœuds | ![](screenshots/kibana/index-management-replicas.jpg) |
+
+Toutes les captures : [screenshots/](screenshots/)
+
+## Contenu du dépôt
 
 ```
-├── docker-compose.yml        # Cluster 2 nœuds + Kibana, TLS activé
-├── .env.example              # Modèle des variables (le .env réel n'est pas versionné)
-├── docs/                     # Architecture, hardening, PKI, sauvegarde
-├── config/
-│   ├── elasticsearch/        # es-node1.yml, es-node2.yml, instances.yml (certificats)
-│   ├── kibana/               # kibana.yml (HTTPS + Fleet)
-│   └── beats/                # Configs historiques Filebeat / Metricbeat (phase 05)
-├── scripts/                  # health-check.sh, verify-tls.sh
-├── tests/                    # authentication/, tls/, ingestion/
-├── screenshots/              # architecture/, kibana/, validation/
-└── phases/                   # Journal détaillé des 9 phases
+docker-compose.yml     cluster 2 nœuds + Kibana (état final, chemins et secrets en variables)
+.env.example           variables à renseigner (le .env n'est pas versionné)
+config/                paramètres Elasticsearch / Kibana, sortie des Beats
+docs/                  architecture, durcissement, certificats, sauvegarde
+phases/                détail de chaque étape
+scripts/               health-check.sh, verify-tls.sh
+tests/                 authentification, TLS, ingestion
+screenshots/           captures prises pendant le projet
 ```
 
-## 🚀 Démarrage rapide
+## Lancer
 
 ```bash
-# 1. Variables d'environnement
-cp .env.example .env && nano .env
-
-# 2. PKI interne : CA + certificats (voir docs/certificates.md)
-
-# 3. Lancement du cluster et de Kibana
-set -a; . ./.env; set +a
+cp .env.example .env          # mots de passe, CERTS_DIR, SNAPSHOTS_DIR, ELK_HOST
+# CA et certificats : docs/certificates.md
 docker compose up -d
-
-# 4. Vérifications
-./scripts/health-check.sh
-./scripts/verify-tls.sh
+bash scripts/health-check.sh
+bash scripts/verify-tls.sh
 ```
 
-Le déploiement du Fleet Server et l'enrôlement des agents sont décrits en [phase 06](phases/phase-06-fleet.md).
+Fleet Server et agents : [phase 06](phases/phase-06-fleet.md).
 
-## 🧪 Validation
+## Tests
 
-| Domaine | Ce qui est vérifié | Script |
-|---|---|---|
-| Authentification | Rejet des requêtes anonymes ou mal signées, moindre privilège | [`test-authentication.sh`](tests/authentication/test-authentication.sh) |
-| TLS | Chaîne de confiance, rejet d'une CA inconnue (anti-MitM), protocoles obsolètes refusés | [`test-tls.sh`](tests/tls/test-tls.sh) |
-| Ingestion | Écriture/lecture de bout en bout, flux des agents | [`test-ingestion.sh`](tests/ingestion/test-ingestion.sh) |
-| Résilience | Perte du nœud secondaire sans interruption | [Phase 07](phases/phase-07-cluster.md#test-de-résilience-failover) |
+| Script | Vérifie |
+|---|---|
+| [test-authentication.sh](tests/authentication/test-authentication.sh) | 401 sans identifiants ou avec un mauvais mot de passe, droits limités de `kibana_system` |
+| [test-tls.sh](tests/tls/test-tls.sh) | certificat validé par la CA interne, refusé sans elle, TLS 1.1 refusé |
+| [test-ingestion.sh](tests/ingestion/test-ingestion.sh) | écriture / lecture, données récentes des agents |
 
-## 🛠️ Post-mortem : incidents résolus
+## Confidentialité
 
-| Incident | Cause | Résolution |
-|---|---|---|
-| 🔴 `UnavailableShardsException` sur `.security` | Réplicas impossibles à allouer sur un nœud unique | Réplicas système à 0 puis réintégration à chaud du 2ᵉ nœud — [phase 00](phases/phase-00-stabilization.md) |
-| 🔴 Agent `DEGRADED` après la v8 | Restriction v8 sur les chemins de CA par défaut | Lien symbolique vers `/etc/elastic-agent/certs/elk-ca.crt` — [phase 08](phases/phase-08-upgrade.md) |
-| 🔴 Conflits inter-versions | Agents v7 face à un Fleet v8 | Upgrade des agents à distance depuis Kibana — [phase 08](phases/phase-08-upgrade.md) |
+Les adresses IP, mots de passe, tokens et chemins locaux sont remplacés par des variables (`<ELK_HOST>`, `CERTS_DIR`…). Sur les captures, les IP sont remplacées et les secrets des jetons d'enrôlement floutés. Aucun certificat ni clé n'est versionné.
 
-## 📸 Captures
+## Outils
 
-Les preuves visuelles (Kibana, Fleet, tests) sont regroupées dans [`screenshots/`](screenshots/).
-
-## 🧠 Compétences mises en œuvre
-
-`Elasticsearch` `Kibana` `Fleet` `Elastic Agent` `Beats` `Docker Compose` `PKI / X.509` `TLS / mTLS` `OpenSSL` `Bash` `Linux` `Haute disponibilité` `Gestion des montées de version` `Analyse d'incidents`
+Elasticsearch, Kibana, Fleet, Elastic Agent, Beats, Docker Compose, OpenSSL, Bash, Linux
 
 ---
 
-<div align="center">
-
-📄 Licence [MIT](LICENSE) · Réalisé par **[CodjoH](https://github.com/CodjoH)**
-
-</div>
+Licence [MIT](LICENSE)
