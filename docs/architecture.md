@@ -1,58 +1,50 @@
-# 🏗️ Architecture
+# Architecture
 
-## Vue d'ensemble
+## Point de départ
 
-La plateforme réunit un **cluster Elasticsearch distribué**, une interface **Kibana** et une flotte d'agents pilotée par un **Fleet Server** natif. Chaque flux réseau est chiffré.
+Elastic Stack **7.17.10** sous Docker, un seul nœud (`docker-cluster`), sans authentification ni TLS. Sur la machine cliente Client-Lin01, cinq Beats envoyaient directement vers Elasticsearch : Filebeat, Metricbeat, Auditbeat, Heartbeat et Packetbeat.
+
+![Kibana 7.17.10 au départ](../screenshots/kibana/kibana-home-7.17.10.jpg)
+
+## Architecture finale (8.11.4)
 
 ```mermaid
 flowchart LR
-    U[👤 Navigateur client] -- "HTTPS :5601" --> K[Kibana v8.11.4]
-    K -- "HTTPS :9200<br/>kibana_system" --> N1
+    U[Navigateur] -- "HTTPS 5601" --> K[kibana]
+    K -- "HTTPS 9200 (kibana_system)" --> N1
 
-    subgraph CLUSTER["Cluster Elasticsearch v8.11.4"]
-        N1[(es-node1<br/>Master / Data)]
-        N2[(es-node2<br/>Data / Réplicas)]
-        N1 <-- "mTLS :9300" --> N2
+    subgraph CLUSTER[cyber-cluster]
+        N1[(elasticsearch<br/>es-node1)]
+        N2[(elasticsearch-node2<br/>es-node2)]
+        N1 <-- "mTLS 9300" --> N2
     end
 
-    subgraph HOST["Hôte central — <ELK_HOST_IP>"]
-        FS[Fleet Server<br/>Elastic Agent v8.11.4]
-    end
-
-    subgraph CLIENT["Machine distante"]
-        A[Client-Lin01<br/>Elastic Agent v8.11.4]
-    end
-
-    A -- "HTTPS :8220<br/>clés d'API rotatives" --> FS
-    A -- "HTTPS :9200<br/>données" --> N1
-    FS -- "HTTPS :9200<br/>service token" --> N1
-    K -. "gestion des politiques" .-> FS
+    FS[Fleet Server<br/>hôte ELK] -- "HTTPS 9200 (service token)" --> N1
+    A[Client-Lin01<br/>Elastic Agent] -- "HTTPS 8220" --> FS
+    A -- "HTTPS 9200" --> N1
 ```
 
-## Composants
-
-| Composant | Rôle | Déploiement | Ports |
+| Conteneur / hôte | Nœud | Rôle | Ports |
 |---|---|---|---|
-| `es-node1` | Nœud maître éligible, données, ingestion | Docker | 9200 (HTTPS), 9300 (mTLS) |
-| `es-node2` | Nœud de données, porteur des réplicas | Docker | 9300 (mTLS) |
-| Kibana | Visualisation, administration, console Fleet | Docker | 5601 (HTTPS) |
-| Fleet Server | Enrôlement et pilotage centralisé des agents | Bare-metal (hôte central) | 8220 (HTTPS) |
-| Elastic Agent | Collecte des logs et métriques (`Client-Lin01`) | Bare-metal (client) | sortant uniquement |
+| `elasticsearch` | es-node1 | master-eligible, data | 9200 publié sur l'hôte, 9300 |
+| `elasticsearch-node2` | es-node2 | master-eligible, data | 9300 (réseau Docker uniquement) |
+| `kibana` | | interface, console Fleet | 5601 |
+| hôte ELK | | Fleet Server (installé hors Docker) | 8220 |
+| Client-Lin01 | | Elastic Agent | sortant uniquement |
 
-## Évolution de la topologie
+Compose complet : [docker-compose.yml](../docker-compose.yml). Les IP ne sont pas publiées, l'hôte central est noté `<ELK_HOST>`.
 
-| | Avant (v7) | Après (v8.11.4) |
+## Avant / après
+
+| | 7.17.10 | 8.11.4 |
 |---|---|---|
-| Topologie | Nœud unique | Cluster 2 nœuds |
-| Chiffrement | Aucun / partiel | HTTPS + mTLS sur tous les flux |
-| Authentification | Optionnelle | Obligatoire, comptes à privilèges minimaux |
-| Collecte | Beats installés et configurés un par un | Elastic Agent piloté par Fleet |
-| Mises à jour des agents | Manuelles, machine par machine | À distance depuis Kibana |
-| Tolérance aux pannes | Aucune | Réplication des shards entre nœuds |
+| Nœuds | 1 | 2 |
+| Authentification | désactivée | obligatoire |
+| Chiffrement | aucun | HTTPS sur 9200 / 5601 / 8220, mTLS sur 9300 |
+| Collecte | 5 Beats configurés à la main | Elastic Agent géré par Fleet |
+| Mise à jour des agents | manuelle | depuis Kibana |
+| Réplicas | 0 | 1 |
 
-## Principes de conception
+## Limite connue
 
-1. **Zéro flux en clair** — aucun port n'accepte de connexion non chiffrée.
-2. **Moindre privilège** — chaque composant utilise un compte ou un jeton limité à son besoin (`kibana_system`, service token `elastic/fleet-server`, clés d'API Fleet).
-3. **Chaîne de confiance unique** — une CA racine interne signe tous les certificats (voir [certificates.md](certificates.md)).
-4. **Centralisation** — politiques de collecte définies une fois dans Fleet et appliquées à toute la flotte.
+Avec deux nœuds master-eligible, Elasticsearch ne garde qu'un seul des deux dans la configuration de vote (il faut un nombre impair). Si c'est ce nœud qui tombe, plus aucun master ne peut être élu. Les données sont répliquées, mais la disponibilité du cluster n'est pas garantie dans tous les cas. Il faudrait un troisième nœud, même `voting_only`, pour ça.
