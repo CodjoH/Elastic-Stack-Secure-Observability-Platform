@@ -1,0 +1,72 @@
+# Elastic Stack v8.11.4 — cluster distribué 2 nœuds + Kibana, TLS partout.
+# Prérequis : certificats générés dans ./certs/runtime (voir docs/certificates.md)
+# Lancement : set -a; . ./.env; set +a && docker compose up -d
+
+services:
+  es-node1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    container_name: es-node1
+    hostname: es-node1
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS}
+    volumes:
+      - ./config/elasticsearch/es-node1.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./certs/runtime:/usr/share/elasticsearch/config/certs:ro
+      - esdata1:/usr/share/elasticsearch/data
+      - snapshots:/usr/share/elasticsearch/snapshots
+    ports:
+      - "9200:9200"   # API REST — HTTPS uniquement
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    networks: [elk]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s --cacert config/certs/ca/ca.crt -u elastic:${ELASTIC_PASSWORD} https://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  es-node2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    container_name: es-node2
+    hostname: es-node2
+    environment:
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS}
+    volumes:
+      - ./config/elasticsearch/es-node2.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./certs/runtime:/usr/share/elasticsearch/config/certs:ro
+      - esdata2:/usr/share/elasticsearch/data
+      - snapshots:/usr/share/elasticsearch/snapshots
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    networks: [elk]
+    depends_on:
+      es-node1:
+        condition: service_healthy
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    container_name: kibana
+    environment:
+      - KIBANA_SYSTEM_PASSWORD=${KIBANA_SYSTEM_PASSWORD}
+      - KIBANA_ENCRYPTION_KEY=${KIBANA_ENCRYPTION_KEY}
+    volumes:
+      - ./config/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+      - ./certs/runtime:/usr/share/kibana/config/certs:ro
+    ports:
+      - "5601:5601"   # Interface web — HTTPS uniquement
+    networks: [elk]
+    depends_on:
+      es-node1:
+        condition: service_healthy
+
+volumes:
+  esdata1:
+  esdata2:
+  snapshots:
+
+networks:
+  elk:
+    driver: bridge

@@ -1,0 +1,30 @@
+# --- Secrets & variables d'environnement ---
+.env
+*.env.local
+!.env.example
+
+# --- Matériel cryptographique (ne JAMAIS versionner) ---
+certs/
+*.key
+*.pem
+*.p12
+*.jks
+*.crt
+*.zip
+!config/**/*.example.crt
+
+# --- Données & journaux ---
+data/
+esdata*/
+logs/
+*.log
+snapshots/
+
+# --- Binaires Elastic Agent ---
+elastic-agent-*/
+*.tar.gz
+
+# --- OS / IDE ---
+.DS_Store
+.vscode/
+.idea/
