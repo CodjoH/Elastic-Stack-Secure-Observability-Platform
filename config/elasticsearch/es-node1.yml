@@ -1,0 +1,43 @@
+# ============================================================
+# es-node1 — Nœud maître éligible + données
+# ============================================================
+cluster.name: elk-secure-cluster
+node.name: es-node1
+node.roles: [ master, data, ingest ]
+
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+discovery.seed_hosts: [ "es-node1", "es-node2" ]
+cluster.initial_master_nodes: [ "es-node1" ]   # à retirer après le premier démarrage
+
+path.repo: [ "/usr/share/elasticsearch/snapshots" ]
+
+# ------------------------------------------------------------
+# Sécurité (Phase 01) — authentification obligatoire
+# ------------------------------------------------------------
+xpack.security.enabled: true
+# Aucun rôle anonyme défini : toute requête non authentifiée est rejetée (401)
+
+# ------------------------------------------------------------
+# TLS HTTP (Phase 02) — API REST sur 9200
+# ------------------------------------------------------------
+xpack.security.http.ssl:
+  enabled: true
+  certificate: certs/es-http/elasticsearch.crt
+  key: certs/es-http/elasticsearch.key
+  certificate_authorities: [ "certs/ca/ca.crt" ]
+
+# ------------------------------------------------------------
+# TLS Transport (Phase 03) — mTLS inter-nœuds sur 9300
+# ------------------------------------------------------------
+xpack.security.transport.ssl:
+  enabled: true
+  verification_mode: certificate
+  client_authentication: required
+  certificate: certs/es-node1/es-node1.crt
+  key: certs/es-node1/es-node1.key
+  certificate_authorities: [ "certs/ca/ca.crt" ]
+
+xpack.security.audit.enabled: true

@@ -1,0 +1,13 @@
+# Définition des certificats à émettre par la CA interne
+# Usage : bin/elasticsearch-certutil cert --ca ca.p12 --in instances.yml --pem
+instances:
+  - name: elasticsearch          # certificat HTTP (API 9200)
+    dns: [ "localhost", "es-node1", "elasticsearch" ]
+    ip:  [ "127.0.0.1", "<ELK_HOST_IP>" ]
+  - name: es-node1               # certificat transport (mTLS 9300)
+    dns: [ "es-node1" ]
+  - name: es-node2
+    dns: [ "es-node2" ]
+  - name: kibana                 # Kibana HTTPS + Fleet Server (8220)
+    dns: [ "localhost", "kibana" ]
+    ip:  [ "127.0.0.1", "<ELK_HOST_IP>" ]
