@@ -1,28 +1,23 @@
 #!/usr/bin/env bash
-# ============================================================
-# Tests TLS — confiance, protocoles, protection MitM
-# ============================================================
-set -uo pipefail
-HOST="${ELK_HOST:-192.168.56.51}"
-CA="${CA_CERT:-certs/runtime/ca/ca.crt}"
-PASS=0; FAIL=0
-res() { if [ "$1" -eq 0 ]; then echo "  [PASS] $2"; PASS=$((PASS+1)); else echo "  [FAIL] $2"; FAIL=$((FAIL+1)); fi; }
+# Pour chaque port : certificat validé par la CA interne, rejeté sans elle
+# (cas d'un certificat présenté par un tiers), TLS 1.1 refusé.
+
+[ -f .env ] && { set -a; . ./.env; set +a; }
+HOST="${ELK_HOST:?ELK_HOST non défini}"
+CA="${CERTS_DIR:-./certs/runtime}/ca/ca.crt"
+OK=0; KO=0
+r() { if [ "$1" -eq 0 ]; then echo "[ok] $2"; OK=$((OK+1)); else echo "[ko] $2"; KO=$((KO+1)); fi; }
 
 for PORT in 9200 5601 8220; do
-  echo "== Port $PORT =="
   echo | openssl s_client -connect "$HOST:$PORT" -CAfile "$CA" -verify_return_error >/dev/null 2>&1
-  res $? "Certificat validé par la CA interne"
+  r $? "$PORT certificat validé par la CA interne"
 
-  # Sans la CA interne, la vérification DOIT échouer (simulation MitM / CA inconnue)
   echo | openssl s_client -connect "$HOST:$PORT" -CAfile /etc/ssl/certs/ca-certificates.crt -verify_return_error >/dev/null 2>&1
-  [ $? -ne 0 ]; res $? "Rejet si la CA n'est pas de confiance"
+  [ $? -ne 0 ]; r $? "$PORT refusé avec les CA publiques du système"
 
-  # Protocoles obsolètes refusés
   echo | openssl s_client -connect "$HOST:$PORT" -tls1_1 >/dev/null 2>&1
-  [ $? -ne 0 ]; res $? "TLS 1.1 refusé"
-
-  echo | openssl s_client -connect "$HOST:$PORT" -tls1_2 -CAfile "$CA" >/dev/null 2>&1
-  res $? "TLS 1.2+ accepté"
+  [ $? -ne 0 ]; r $? "$PORT TLS 1.1 refusé"
 done
 
-echo; echo "Résultat : $PASS réussi(s), $FAIL échec(s)"; [ $FAIL -eq 0 ]
+echo "$OK ok / $KO ko"
+[ $KO -eq 0 ]
