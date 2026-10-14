@@ -1,9 +1,10 @@
-# ✅ Captures — Validation
+# Captures de validation
 
-| Fichier | Contenu |
-|---|---|
-| `auth-401.png` | Requête anonyme rejetée (`401 Unauthorized`) |
-| `openssl-verify.png` | `openssl s_client` ➔ `Verify return code: 0 (ok)` |
-| `cluster-green.png` | `_cluster/health` ➔ `green` |
-| `failover-yellow.png` | Cluster `yellow` après arrêt de es-node2, données toujours servies |
-| `tests-pass.png` | Sortie des scripts de `tests/` : tous les tests `PASS` |
+IP de l'hôte remplacée par `<ELK_HOST_IP>`.
+
+| Fichier | Contenu | Phase |
+|---|---|---|
+| `curl-auth-http.jpg` | API accessible seulement avec mot de passe, mais encore en HTTP | [01](../../phases/phase-01-authentication.md) |
+| `beats-test-metricbeat-packetbeat.jpg` | `test output` : TLS 1.3, chaîne vérifiée | [05](../../phases/phase-05-beats-authentication.md) |
+| `beats-test-auditbeat-filebeat.jpg` | idem | [05](../../phases/phase-05-beats-authentication.md) |
+| `beats-test-heartbeat.jpg` | idem | [05](../../phases/phase-05-beats-authentication.md) |
