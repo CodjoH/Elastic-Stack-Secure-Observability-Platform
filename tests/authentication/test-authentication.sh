@@ -1,30 +1,26 @@
 #!/usr/bin/env bash
-# ============================================================
-# Tests d'authentification et de moindre privilège
-# Attendu : toute requête anonyme ou mal authentifiée est rejetée.
-# ============================================================
-set -uo pipefail
-[ -f .env ] && { set -a; . ./.env; set +a; }
-URL="https://${ELK_HOST:-192.168.56.51}:9200"
-CA="${CA_CERT:-certs/runtime/ca/ca.crt}"
-PASS=0; FAIL=0
+# Requêtes anonymes / mauvais identifiants rejetés, kibana_system limité.
 
-expect() {  # expect <description> <code attendu> <args curl...>
+[ -f .env ] && { set -a; . ./.env; set +a; }
+URL="https://${ELK_HOST:?ELK_HOST non défini}:9200"
+CA="${CERTS_DIR:-./certs/runtime}/ca/ca.crt"
+OK=0; KO=0
+
+check() {   # check "description" code_attendu [options curl]
   local desc=$1 want=$2; shift 2
-  local got; got=$(curl -s -o /dev/null -w "%{http_code}" --cacert "$CA" "$@")
-  if [ "$got" = "$want" ]; then echo "  [PASS] $desc ($got)"; PASS=$((PASS+1))
-  else echo "  [FAIL] $desc (attendu $want, obtenu $got)"; FAIL=$((FAIL+1)); fi
+  local got
+  got=$(curl -s -o /dev/null -w "%{http_code}" --cacert "$CA" "$@")
+  if [ "$got" = "$want" ]; then echo "[ok] $desc ($got)"; OK=$((OK+1))
+  else echo "[ko] $desc : attendu $want, reçu $got"; KO=$((KO+1)); fi
 }
 
-echo "== Authentification =="
-expect "Requête anonyme rejetée"                  401 "$URL/"
-expect "Mot de passe invalide rejeté"             401 -u elastic:mauvais "$URL/"
-expect "Utilisateur inexistant rejeté"            401 -u intrus:intrus "$URL/"
-expect "Superutilisateur authentifié"             200 -u "elastic:$ELASTIC_PASSWORD" "$URL/"
+check "anonyme"                          401 "$URL/"
+check "mauvais mot de passe"             401 -u elastic:test "$URL/"
+check "utilisateur inconnu"              401 -u inconnu:test "$URL/"
+check "elastic authentifié"              200 -u "elastic:$ELASTIC_PASSWORD" "$URL/"
+check "kibana_system lit logs-*"         403 -u "kibana_system:$KIBANA_SYSTEM_PASSWORD" "$URL/logs-*/_search"
+check "kibana_system crée un user"       403 -u "kibana_system:$KIBANA_SYSTEM_PASSWORD" \
+      -X PUT "$URL/_security/user/test" -H 'Content-Type: application/json' -d '{"password":"testtest","roles":[]}'
 
-echo "== Moindre privilège =="
-expect "kibana_system ne lit pas les index métier" 403 -u "kibana_system:$KIBANA_SYSTEM_PASSWORD" "$URL/logs-*/_search"
-expect "kibana_system ne crée pas d'utilisateur"   403 -u "kibana_system:$KIBANA_SYSTEM_PASSWORD" \
-       -X PUT "$URL/_security/user/test" -H 'Content-Type: application/json' -d '{"password":"xxxxxxxx","roles":[]}'
-
-echo; echo "Résultat : $PASS réussi(s), $FAIL échec(s)"; [ $FAIL -eq 0 ]
+echo "$OK ok / $KO ko"
+[ $KO -eq 0 ]
