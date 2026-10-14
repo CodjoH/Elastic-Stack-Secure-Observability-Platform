@@ -1,48 +1,46 @@
-# Phase 00 — Stabilisation de l'existant
+# Phase 00 : déploiement initial et stabilisation (7.17.10)
 
-> **Objectif :** partir d'une base saine (cluster `green`) avant tout durcissement.
+## Point de départ
 
-## Contexte
+Elastic Stack 7.17.10 sur un seul nœud avec Docker Compose :
 
-État initial : une Elastic Stack v7 sur un nœud unique, sans chiffrement, dont le statut oscillait entre `yellow` et `red` après une réorganisation réseau.
+- Elasticsearch et Kibana, sécurité désactivée
+- API et interface en HTTP
+- sur Client-Lin01 : Filebeat, Metricbeat, Auditbeat, Heartbeat et Packetbeat, envoi direct vers Elasticsearch
 
-## Diagnostic
+Avant de durcir quoi que ce soit, je voulais une base stable et connue.
+
+## Prérequis système
+
+```bash
+# obligatoire pour Elasticsearch
+sudo sysctl -w vm.max_map_count=262144
+echo "vm.max_map_count=262144" | sudo tee /etc/sysctl.d/99-elasticsearch.conf
+```
+
+Dans le compose : `memlock` illimité, `nofile` à 65536, heap fixé via `ES_JAVA_OPTS`.
+
+## Contrôles
 
 ```bash
 curl -s "http://localhost:9200/_cluster/health?pretty"
+curl -s "http://localhost:9200/_cat/indices?v"
 curl -s "http://localhost:9200/_cat/shards?v&h=index,shard,prirep,state,unassigned.reason"
-curl -s "http://localhost:9200/_cluster/allocation/explain?pretty"
 ```
 
-## 🔴 Incident : `UnavailableShardsException` sur l'index `.security`
-
-**Symptôme :** les requêtes d'authentification échouaient ; l'index système `.security` avait des shards non alloués.
-
-**Cause :** sur un nœud unique, les réplicas ne peuvent jamais être alloués (un réplica ne peut pas résider sur le même nœud que son primaire). La réorganisation réseau a bloqué l'allocation et laissé l'index système dans un état indisponible.
-
-## 🟢 Résolution
-
-Stabilisation transitoire en forçant à 0 le nombre de réplicas des index système, le temps d'ajouter le second nœud :
+En mono-nœud, les index avec un réplica restent en `yellow` (un réplica ne peut pas être sur le même nœud que son primaire). Pour les index créés à ce stade, réplicas à 0 :
 
 ```bash
-curl -X PUT "http://localhost:9200/.security-*/_settings" -H 'Content-Type: application/json' -d '{
-  "index": { "number_of_replicas": 0, "auto_expand_replicas": "0-1" }
-}'
-
-# Relancer les allocations en échec
-curl -X POST "http://localhost:9200/_cluster/reroute?retry_failed=true"
+curl -X PUT "http://localhost:9200/_all/_settings" -H 'Content-Type: application/json' \
+  -d '{"index":{"number_of_replicas":0}}'
 ```
 
-> `auto_expand_replicas: 0-1` permet aux réplicas de réapparaître automatiquement dès que le second nœud rejoint le cluster ([phase 07](phase-07-cluster.md)).
+Ils sont remis à 1 en [phase 07](phase-07-cluster.md) quand le deuxième nœud arrive.
 
-## Validation
+## État en fin de phase
 
-```bash
-curl -s "http://localhost:9200/_cluster/health" | grep '"status":"green"'
-```
+Cluster `green`, Kibana accessible, données des Beats visibles dans Discover. Tout est encore en clair et sans authentification : Kibana s'ouvre directement, sans écran de connexion ni menu utilisateur.
 
-## Résultat
+![Kibana 7.17.10 sans authentification](../screenshots/kibana/kibana-home-7.17.10.jpg)
 
-✅ Cluster `green`, index `.security` disponible, base saine pour la suite du durcissement.
-
-➡️ Suite : [Phase 01 — Authentification](phase-01-authentication.md)
+Suite : [phase 01](phase-01-authentication.md)

@@ -1,64 +1,59 @@
-# Phase 08 — Montée de version majeure v7 ➔ v8.11.4
+# Phase 08 : montée de version 7.17.10 vers 8.11.4
 
-> **Objectif :** passer en v8 sans perte de données ni rupture de la collecte.
+La 7.17 est la seule version depuis laquelle on peut passer en 8.x, le cluster était donc déjà au bon point de départ.
 
 ## Préparation
 
-1. **Snapshot complet** avant toute action — voir [docs/backup-restore.md](../docs/backup-restore.md)
-2. **Upgrade Assistant** de Kibana : correction des paramètres et index dépréciés
-3. Mise à niveau préalable vers la dernière **7.17.x** (passage obligatoire vers la v8)
+- snapshot complet ([backup-restore.md](../docs/backup-restore.md)), le dépôt est monté sur les deux nœuds (`path.repo`)
+- Upgrade Assistant de Kibana : aucun problème critique côté Elasticsearch ni Kibana, quelques avertissements à relire, aucun appel d'API déprécié
 
-## Séquence : rolling upgrade
+![Upgrade Assistant](../screenshots/kibana/upgrade-assistant.jpg)
+
+## Mise à jour nœud par nœud
 
 ```bash
-# 1. Désactiver l'allocation des réplicas pendant le redémarrage d'un nœud
-curl ... -X PUT "https://<ELK_HOST_IP>:9200/_cluster/settings" -H 'Content-Type: application/json' \
+# éviter que le cluster réplique tout pendant qu'un nœud redémarre
+curl ... -X PUT "https://<ELK_HOST>:9200/_cluster/settings" -H 'Content-Type: application/json' \
   -d '{"persistent":{"cluster.routing.allocation.enable":"primaries"}}'
 
-# 2. Mettre à jour un nœud à la fois (STACK_VERSION=8.11.4 dans .env)
-docker compose up -d es-node2      # puis es-node1
+# image passée en 8.11.4 dans le docker-compose, puis un nœud à la fois
+docker compose up -d elasticsearch-node2
+docker compose up -d elasticsearch
 
-# 3. Réactiver l'allocation et attendre le statut green
-curl ... -X PUT "https://<ELK_HOST_IP>:9200/_cluster/settings" -H 'Content-Type: application/json' \
+curl ... -X PUT "https://<ELK_HOST>:9200/_cluster/settings" -H 'Content-Type: application/json' \
   -d '{"persistent":{"cluster.routing.allocation.enable":null}}'
 
-# 4. Kibana, puis Fleet Server, puis les agents
+# ensuite Kibana, puis Fleet Server, puis les agents
 docker compose up -d kibana
 ```
 
-## Incidents & résolutions
+## Incident 1 : agent local en DEGRADED
 
-### 🔴 Agent local en statut `DEGRADED` après le passage en v8
+Juste après le passage en 8, l'agent de l'hôte central est passé en `DEGRADED`. La 8.x applique une restriction sur les chemins de CA par défaut et l'agent ne trouvait plus la CA.
 
-**Cause :** la v8 applique une restriction de sécurité sur les chemins de CA par défaut : l'agent ne trouvait plus l'autorité de certification.
-
-**🟢 Résolution permanente :** lien symbolique système vers un emplacement autorisé :
+Correction permanente avec un lien symbolique :
 
 ```bash
 sudo mkdir -p /etc/elastic-agent/certs
-sudo ln -sf /home/cyber/certs/runtime/ca/ca.crt /etc/elastic-agent/certs/elk-ca.crt
+sudo ln -sf <CERTS_DIR>/ca/ca.crt /etc/elastic-agent/certs/elk-ca.crt
 sudo systemctl restart elastic-agent
-sudo elastic-agent status    # ➔ HEALTHY
+sudo elastic-agent status
 ```
 
-### 🔴 Conflits de communication inter-versions
+## Incident 2 : agents 7.x face au Fleet Server 8.x
 
-**Cause :** des agents encore en v7 dialoguant avec un Fleet Server v8.
+Les agents étaient encore en 7.17.10 (voir la capture de la [phase 06](phase-06-fleet.md)). Pendant la transition, des erreurs de communication entre versions sont apparues. Plutôt que de réinstaller Client-Lin01, j'ai utilisé la mise à jour à distance de Fleet (Fleet > Agents > Upgrade agent) pour passer l'agent en 8.11.4 depuis Kibana, sans perte de données.
 
-**🟢 Résolution :** utilisation du mécanisme d'**upgrade à distance de Fleet** : mise à niveau de `Client-Lin01` vers 8.11.4 directement depuis **Kibana ➔ Fleet ➔ Agents ➔ Upgrade agent**, sans intervention sur la machine et sans perte d'évènements.
-
-## Validation
+## Vérification
 
 ```bash
-curl ... "https://<ELK_HOST_IP>:9200/_cat/nodes?v&h=name,version"   # ➔ 8.11.4 sur les 2 nœuds
+curl ... "https://<ELK_HOST>:9200/_cat/nodes?v&h=name,version"
 ./scripts/health-check.sh
 ./tests/authentication/test-authentication.sh
 ./tests/tls/test-tls.sh
 ./tests/ingestion/test-ingestion.sh
 ```
 
-## Résultat
+Les deux nœuds, Kibana, Fleet Server et Client-Lin01 sont en 8.11.4, cluster `green`.
 
-✅ Stack entièrement en **v8.11.4** : cluster `green`, agents `Healthy`, aucune donnée perdue, collecte continue pendant toute l'opération.
-
-⬅️ [Phase 07](phase-07-cluster.md) · 🏠 [Retour au README](../README.md)
+Retour au [README](../README.md)

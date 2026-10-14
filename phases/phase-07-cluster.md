@@ -1,53 +1,64 @@
-# Phase 07 — Passage en cluster distribué
+# Phase 07 : passage à deux nœuds
 
-> **Objectif :** supprimer le point unique de défaillance et garantir la disponibilité des données.
+Objectif : que les données survivent à la perte d'un nœud.
 
-## Actions
+`curl ...` ci-dessous = `curl --cacert $CERTS_DIR/ca/ca.crt -u elastic:$ELASTIC_PASSWORD`
 
-### 1. Ajout de `es-node2`
+## Incident : UnavailableShardsException sur `.security`
 
-- Rôle : données + réplicas ([es-node2.yml](../config/elasticsearch/es-node2.yml))
-- Certificat transport dédié signé par la CA ([phase 03](phase-03-transport-tls.md))
-- Découverte via `discovery.seed_hosts: [ "es-node1", "es-node2" ]`
+En réorganisant le réseau pour préparer l'ajout du deuxième nœud, l'index `.security` est devenu indisponible (`UnavailableShardsException`). Conséquence directe : plus aucune authentification possible, donc plus d'accès à Kibana.
+
+Diagnostic :
 
 ```bash
-docker compose up -d es-node2
+curl ... "https://<ELK_HOST>:9200/_cat/shards/.security*?v"
+curl ... "https://<ELK_HOST>:9200/_cluster/allocation/explain?pretty"
 ```
 
-### 2. Rétablissement des réplicas
-
-Les réplicas mis à 0 en [phase 00](phase-00-stabilization.md) sont restaurés :
+Stabilisation temporaire : réplicas des index système à 0 pour revenir à un état sain avant d'ajouter le nœud.
 
 ```bash
-curl --cacert certs/runtime/ca/ca.crt -u elastic:$ELASTIC_PASSWORD \
-  -X PUT "https://<ELK_HOST_IP>:9200/_all/_settings" -H 'Content-Type: application/json' \
+curl ... -X PUT "https://<ELK_HOST>:9200/.security-*/_settings" -H 'Content-Type: application/json' \
+  -d '{"index":{"number_of_replicas":0}}'
+curl ... -X POST "https://<ELK_HOST>:9200/_cluster/reroute?retry_failed=true"
+```
+
+## Ajout du deuxième nœud
+
+Nouveau service `elasticsearch-node2` (nœud `es-node2`) dans le [docker-compose](../docker-compose.yml) :
+
+- même `cluster.name`, découverte croisée (`discovery.seed_hosts` pointe sur l'autre conteneur)
+- mêmes paramètres de sécurité, certificat transport `es-node2/` (phase 03)
+- port 9200 non publié : seul le premier nœud est exposé sur l'hôte
+- `discovery.type: single-node` retiré du premier nœud
+
+```bash
+docker compose up -d elasticsearch-node2
+curl ... "https://<ELK_HOST>:9200/_cat/nodes?v"
+```
+
+Puis réplicas remis à 1 :
+
+```bash
+curl ... -X PUT "https://<ELK_HOST>:9200/_all/_settings" -H 'Content-Type: application/json' \
   -d '{"index":{"number_of_replicas":1}}'
 ```
 
-### 3. Retrait de `cluster.initial_master_nodes`
+Résultat dans Kibana : tous les index des Beats en `green` avec 1 réplica, ce qui n'est possible qu'avec deux nœuds.
 
-Paramètre à n'utiliser qu'au tout premier démarrage : il est retiré une fois le cluster formé.
+![index en green avec 1 réplica](../screenshots/kibana/index-management-replicas.jpg)
 
-## Test de résilience (failover)
+## Test de panne
 
 ```bash
-# 1. Cluster nominal
-curl ... "https://<ELK_HOST_IP>:9200/_cluster/health"        # ➔ green, 2 nœuds
+docker stop elasticsearch-node2
+curl ... "https://<ELK_HOST>:9200/_cluster/health"      # yellow, les données restent accessibles
+./tests/ingestion/test-ingestion.sh                      # l'ingestion continue
 
-# 2. Simulation de panne du nœud secondaire
-docker stop es-node2
-curl ... "https://<ELK_HOST_IP>:9200/_cluster/health"        # ➔ yellow : données toujours accessibles
-./tests/ingestion/test-ingestion.sh                           # ➔ l'ingestion continue
-
-# 3. Retour du nœud
-docker start es-node2
-curl ... "https://<ELK_HOST_IP>:9200/_cluster/health?wait_for_status=green&timeout=120s"   # ➔ green
+docker start elasticsearch-node2
+curl ... "https://<ELK_HOST>:9200/_cluster/health?wait_for_status=green&timeout=120s"
 ```
 
-## Résultat
+L'arrêt du second nœud ne coupe ni l'accès ni la collecte, et les réplicas se reconstruisent à son retour. Avec seulement deux nœuds master-eligible, ce n'est pas vrai dans tous les cas : voir [architecture](../docs/architecture.md#limite-connue).
 
-✅ La perte d'un nœud de données n'entraîne ni perte de données ni interruption de la collecte ; les shards sont reconstruits automatiquement à son retour.
-
-> 💡 Amélioration : un 3ᵉ nœud maître éligible permettrait aussi de tolérer la perte du maître (quorum à 2 sur 3).
-
-⬅️ [Phase 06](phase-06-fleet.md) · ➡️ [Phase 08 — Montée de version](phase-08-upgrade.md)
+Suite : [phase 08](phase-08-upgrade.md)
