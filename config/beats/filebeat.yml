@@ -1,24 +1,14 @@
-# ============================================================
-# Filebeat — configuration historique (Phase 05)
-# Remplacée par Elastic Agent + Fleet en Phase 06 : conservée
-# pour documenter l'état "avant migration".
-# ============================================================
-filebeat.inputs:
-  - type: filestream
-    id: system-logs
-    paths:
-      - /var/log/syslog
-      - /var/log/auth.log
+# Sortie Elasticsearch des Beats sur Client-Lin01 (7.17.10, phase 05).
+# Même bloc pour filebeat, metricbeat, auditbeat, heartbeat et packetbeat.
+# Remplacés par Elastic Agent en phase 06.
 
 output.elasticsearch:
-  hosts: [ "https://<ELK_HOST_IP>:9200" ]
-  protocol: "https"
-  # Compte dédié avec le rôle minimal "filebeat_writer" (voir phase-05)
-  username: "filebeat_writer"
-  password: "${FILEBEAT_PASSWORD}"
+  hosts: [ "https://${ELK_HOST}:9200" ]
+  username: "${ES_USER}"
+  password: "${ES_PWD}"          # dans le keystore du Beat, pas en clair
   ssl.certificate_authorities: [ "/etc/filebeat/certs/ca.crt" ]
   ssl.verification_mode: full
 
 setup.kibana:
-  host: "https://<ELK_HOST_IP>:5601"
+  host: "https://${ELK_HOST}:5601"
   ssl.certificate_authorities: [ "/etc/filebeat/certs/ca.crt" ]
