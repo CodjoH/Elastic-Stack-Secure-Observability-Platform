@@ -1,39 +1,29 @@
-# Phase 03 — mTLS inter-nœuds (Transport 9300)
+# Phase 03 : mTLS entre les nœuds (9300)
 
-> **Objectif :** chiffrer la réplication et empêcher un nœud non autorisé de rejoindre le cluster.
+Le port 9300 transporte la réplication et l'état du cluster. Sans authentification mutuelle, une machine qui connaît le `cluster.name` peut essayer de rejoindre le cluster. C'est aussi un prérequis pour passer à plusieurs nœuds avec la sécurité activée.
 
-## Pourquoi
+## Configuration
 
-La couche transport véhicule la réplication des données et l'état du cluster. Sans authentification mutuelle, n'importe quelle machine connaissant le `cluster.name` pourrait tenter de rejoindre le cluster et recevoir des copies des données.
-
-## Actions
-
-Un certificat par nœud, signé par la même CA :
+Un certificat par nœud (`es-node1/`, `es-node2/`), tous signés par la même CA. Pour es-node1 :
 
 ```yaml
-xpack.security.transport.ssl:
-  enabled: true
-  verification_mode: certificate     # vérifie la signature par la CA
-  client_authentication: required    # chaque nœud doit présenter son certificat
-  certificate: certs/es-node1/es-node1.crt
-  key: certs/es-node1/es-node1.key
-  certificate_authorities: [ "certs/ca/ca.crt" ]
+# passé en variables d'environnement dans le docker-compose
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.certificate: certs/es-node1/es-node1.crt
+xpack.security.transport.ssl.key: certs/es-node1/es-node1.key
+xpack.security.transport.ssl.certificate_authorities: [ "certs/ca/ca.crt" ]
 ```
 
-> `verification_mode: certificate` valide la chaîne de confiance sans contrôler le nom d'hôte — adapté à un réseau Docker où les noms internes varient. En production multi-hôtes, `full` est recommandé.
+`client_authentication` n'est pas précisé : sur la couche transport, la valeur par défaut est `required`, chaque nœud doit donc présenter son certificat.
 
-## Validation
+`verification_mode: certificate` vérifie la signature par la CA mais pas le nom d'hôte. Ça suffit ici parce que seuls les certificats émis par la CA interne sont acceptés. Sur plusieurs machines physiques, `full` serait préférable.
+
+## Vérification
 
 ```bash
-# Les deux nœuds sont visibles : la poignée de main mTLS fonctionne
-curl --cacert certs/runtime/ca/ca.crt -u elastic:$ELASTIC_PASSWORD "https://192.168.56.51:9200/_cat/nodes?v"
-
-# Un nœud sans certificat valide est rejeté (dans les logs) :
-docker logs es-node1 2>&1 | grep -i "handshake"
+curl --cacert $CERTS_DIR/ca/ca.crt -u elastic:$ELASTIC_PASSWORD "https://<ELK_HOST>:9200/_cat/nodes?v"
+docker logs elasticsearch 2>&1 | grep -i handshake    # erreurs si un nœud présente un mauvais certificat
 ```
 
-## Résultat
-
-✅ Toute communication entre nœuds est chiffrée et authentifiée des deux côtés, ce qui protège le quorum du cluster.
-
-⬅️ [Phase 02](phase-02-http-tls.md) · ➡️ [Phase 04 — Kibana HTTPS](phase-04-kibana-https.md)
+Suite : [phase 04](phase-04-kibana-https.md)

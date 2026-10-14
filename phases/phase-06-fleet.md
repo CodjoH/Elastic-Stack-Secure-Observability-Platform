@@ -1,66 +1,72 @@
-# Phase 06 — Migration vers Elastic Agent & Fleet
+# Phase 06 : Elastic Agent et Fleet
 
-> **Objectif :** remplacer les Beats par un agent unique, administré de façon centralisée depuis Kibana.
+Remplacer les Beats par un agent unique géré depuis Kibana.
 
-## Architecture cible
+- Fleet Server installé directement sur l'hôte central (port 8220)
+- Elastic Agent sur Client-Lin01, enrôlé auprès du Fleet Server
+- politique avec l'intégration System, définie une seule fois dans Kibana
 
-- **Fleet Server** installé en natif (bare-metal) sur l'hôte central `192.168.56.51`, port 8220
-- **Elastic Agent** sur `Client-Lin01`, enrôlé auprès du Fleet Server
-- Politiques de collecte (intégration *System*) définies une seule fois dans Kibana
+Cette phase a été faite en 7.17.10. Les agents ont été passés en 8.11.4 en phase 08.
 
-## Actions
-
-### 1. Jeton de service pour le Fleet Server
+## Service token pour le Fleet Server
 
 ```bash
-docker exec -it es-node1 bin/elasticsearch-service-tokens create elastic/fleet-server token-final
+docker exec -it elasticsearch bin/elasticsearch-service-tokens create elastic/fleet-server <nom_du_token>
 ```
 
-### 2. Installation du Fleet Server
+Le token n'est affiché qu'une fois et n'est conservé nulle part dans le dépôt.
+
+## Installation du Fleet Server
 
 ```bash
-sudo ./elastic-agent install --url=https://192.168.56.51:8220 \
-  --fleet-server-es=https://192.168.56.51:9200 \
-  --fleet-server-service-token=<TOKEN_GENERE> \
-  --fleet-server-policy=<ID_POLITIQUE_FLEET_SERVER> \
-  --certificate-authorities=/home/cyber/certs/runtime/ca/ca.crt \
-  --fleet-server-es-ca=/home/cyber/certs/runtime/ca/ca.crt \
-  --fleet-server-cert=/home/cyber/certs/runtime/kibana/kibana.crt \
-  --fleet-server-cert-key=/home/cyber/certs/runtime/kibana/kibana.key
+sudo ./elastic-agent install --url=https://<ELK_HOST>:8220 \
+  --fleet-server-es=https://<ELK_HOST>:9200 \
+  --fleet-server-service-token=<SERVICE_TOKEN> \
+  --fleet-server-policy=<FLEET_SERVER_POLICY_ID> \
+  --certificate-authorities=<CERTS_DIR>/ca/ca.crt \
+  --fleet-server-es-ca=<CERTS_DIR>/ca/ca.crt \
+  --fleet-server-cert=<CERTS_DIR>/kibana/kibana.crt \
+  --fleet-server-cert-key=<CERTS_DIR>/kibana/kibana.key
 ```
 
-### 3. Enrôlement de Client-Lin01
+Le Fleet Server réutilise le certificat Kibana, dont le SAN couvre l'IP de l'hôte.
+
+## Enrôlement de Client-Lin01
 
 ```bash
-sudo ./elastic-agent install --url=https://192.168.56.51:8220 \
-  --enrollment-token=<JETON_ENROLEMENT_KIBANA> \
+sudo ./elastic-agent install --url=https://<ELK_HOST>:8220 \
+  --enrollment-token=<ENROLLMENT_TOKEN> \
   --certificate-authorities=/etc/elastic-agent/certs/elk-ca.crt
 ```
 
-### 4. Retrait des Beats
+Les jetons d'enrôlement sont gérés dans Fleet > Enrollment tokens (secrets floutés) :
+
+![jetons d'enrôlement](../screenshots/kibana/fleet-enrollment-tokens.jpg)
+
+Puis arrêt des Beats :
 
 ```bash
-sudo systemctl disable --now filebeat metricbeat
+sudo systemctl disable --now filebeat metricbeat auditbeat heartbeat packetbeat
 ```
 
-## Bénéfices sécurité
+## Ce que ça change
 
-| Avant (Beats) | Après (Fleet) |
+| Beats | Fleet |
 |---|---|
-| Mot de passe statique sur chaque machine | Clés d'API générées et renouvelées par Fleet |
-| Configuration locale modifiable | Politique centralisée et versionnée dans Kibana |
-| Mises à jour manuelles | Mises à jour pilotées à distance |
+| mot de passe stocké sur chaque machine | clés d'API générées par Fleet pour chaque agent |
+| configuration locale | politique centralisée dans Kibana |
+| mises à jour à la main | mises à jour lancées depuis Kibana |
 
-## Validation
+## Vérification
 
 ```bash
-sudo elastic-agent status          # ➔ HEALTHY
-curl -s --cacert certs/runtime/ca/ca.crt https://192.168.56.51:8220/api/status   # ➔ "HEALTHY"
+sudo elastic-agent status
+curl -s --cacert $CERTS_DIR/ca/ca.crt https://<ELK_HOST>:8220/api/status
 ./tests/ingestion/test-ingestion.sh
 ```
 
-## Résultat
+Les deux agents (l'hôte ELK qui porte le Fleet Server, et Client-Lin01) remontent `Healthy`, encore en 7.17.10. Kibana signale déjà « Upgrade available », traité en phase 08.
 
-✅ Agents visibles et `Healthy` dans **Kibana ➔ Fleet**, données `logs-system.*` et `metrics-system.*` reçues.
+![agents Fleet en 7.17.10](../screenshots/kibana/fleet-agents-7.17.10.jpg)
 
-⬅️ [Phase 05](phase-05-beats-authentication.md) · ➡️ [Phase 07 — Cluster](phase-07-cluster.md)
+Suite : [phase 07](phase-07-cluster.md)

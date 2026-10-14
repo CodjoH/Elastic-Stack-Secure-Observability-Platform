@@ -1,46 +1,38 @@
-# Phase 05 — Authentification des Beats
+# Phase 05 : Beats en HTTPS et authentifiés
 
-> **Objectif :** que les collecteurs historiques (Filebeat, Metricbeat) continuent d'envoyer des données sur une stack désormais chiffrée et authentifiée, avec des droits minimaux.
+Après les phases 01 à 04, les cinq Beats de Client-Lin01 (Filebeat, Metricbeat, Auditbeat, Heartbeat, Packetbeat) ne pouvaient plus écrire : il leur fallait des identifiants et la CA.
 
-## Actions
+## Rôle d'écriture
 
-### 1. Rôle d'écriture minimal
-
-Rôle défini dans [config/beats/beats-writer-role.json](../config/beats/beats-writer-role.json) : création de documents uniquement, sur les index des Beats.
+[beats-writer-role.json](../config/beats/beats-writer-role.json) : création de documents uniquement, sur les index des cinq Beats.
 
 ```bash
-curl --cacert certs/runtime/ca/ca.crt -u elastic:$ELASTIC_PASSWORD \
-  -X PUT "https://192.168.56.51:9200/_security/role/beats_writer" \
-  -H 'Content-Type: application/json' -d @config/beats/beats-writer-role.json
-
-curl --cacert certs/runtime/ca/ca.crt -u elastic:$ELASTIC_PASSWORD \
-  -X PUT "https://192.168.56.51:9200/_security/user/filebeat_writer" \
-  -H 'Content-Type: application/json' -d '{"password":"<MDP_ROBUSTE>","roles":["beats_writer"]}'
+C="curl --cacert $CERTS_DIR/ca/ca.crt -u elastic:$ELASTIC_PASSWORD -H Content-Type:application/json"
+$C -X PUT "https://<ELK_HOST>:9200/_security/role/beats_writer" -d @config/beats/beats-writer-role.json
+$C -X PUT "https://<ELK_HOST>:9200/_security/user/<utilisateur>" -d '{"password":"<mot_de_passe>","roles":["beats_writer"]}'
 ```
 
-### 2. Configuration des Beats
+## Configuration
 
-- Sortie `https://` avec la CA interne et `ssl.verification_mode: full`
-- Mot de passe stocké dans le **keystore** du Beat, jamais en clair dans le fichier :
+Même bloc de sortie pour les cinq Beats ([exemple](../config/beats/filebeat.yml)) : `https://`, CA interne copiée sur le client, `ssl.verification_mode: full`. Le mot de passe est dans le keystore du Beat :
 
 ```bash
 sudo filebeat keystore create
-sudo filebeat keystore add FILEBEAT_PASSWORD
+sudo filebeat keystore add ES_PWD
 ```
 
-Fichiers : [filebeat.yml](../config/beats/filebeat.yml) · [metricbeat.yml](../config/beats/metricbeat.yml)
+## Vérification
 
-## Validation
+`test output` sur chaque Beat : connexion OK, chaîne de certificats vérifiée, TLS 1.3, Elasticsearch 7.17.10.
 
-```bash
-sudo filebeat test output
-# ➔ talk to server... OK / TLS... OK
-```
+![metricbeat et packetbeat](../screenshots/validation/beats-test-metricbeat-packetbeat.jpg)
 
-## Limites constatées ➔ motivation de la phase 06
+![auditbeat et filebeat](../screenshots/validation/beats-test-auditbeat-filebeat.jpg)
 
-- Configuration et secrets à maintenir **sur chaque machine**
-- Mises à jour manuelles, machine par machine
-- Un binaire différent par type de donnée (logs, métriques…)
+![heartbeat](../screenshots/validation/beats-test-heartbeat.jpg)
 
-⬅️ [Phase 04](phase-04-kibana-https.md) · ➡️ [Phase 06 — Fleet](phase-06-fleet.md)
+## Limites
+
+Ça fonctionne, mais cinq agents différents, chacun avec sa configuration, son keystore et ses mises à jour, sur une seule machine. À l'échelle de plusieurs postes, ce n'est pas tenable. C'est ce qui a motivé le passage à Fleet.
+
+Suite : [phase 06](phase-06-fleet.md)
