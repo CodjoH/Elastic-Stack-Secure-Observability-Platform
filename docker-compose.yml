@@ -1,72 +1,92 @@
-# Elastic Stack v8.11.4 — cluster distribué 2 nœuds + Kibana, TLS partout.
-# Prérequis : certificats générés dans ./certs/runtime (voir docs/certificates.md)
-# Lancement : set -a; . ./.env; set +a && docker compose up -d
-
+version: '3.8'
 services:
-  es-node1:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
-    container_name: es-node1
-    hostname: es-node1
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
+    container_name: elasticsearch
     environment:
+      - node.name=es-node1
+      - cluster.name=cyber-cluster
+      - discovery.seed_hosts=elasticsearch-node2
+      - cluster.initial_master_nodes=es-node1,es-node2
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - path.repo=/usr/share/elasticsearch/snapshots
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.certificate=certs/es-http/elasticsearch.crt
+      - xpack.security.http.ssl.key=certs/es-http/elasticsearch.key
+      - xpack.security.http.ssl.client_authentication=optional
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.certificate=certs/es-node1/es-node1.crt
+      - xpack.security.transport.ssl.key=certs/es-node1/es-node1.key
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-      - ES_JAVA_OPTS=${ES_JAVA_OPTS}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     volumes:
-      - ./config/elasticsearch/es-node1.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
-      - ./certs/runtime:/usr/share/elasticsearch/config/certs:ro
-      - esdata1:/usr/share/elasticsearch/data
-      - snapshots:/usr/share/elasticsearch/snapshots
+      - es_data:/usr/share/elasticsearch/data
+      - ${SNAPSHOTS_DIR}:/usr/share/elasticsearch/snapshots
+      - ${CERTS_DIR}:/usr/share/elasticsearch/config/certs:ro
     ports:
-      - "9200:9200"   # API REST — HTTPS uniquement
-    ulimits:
-      memlock: { soft: -1, hard: -1 }
-      nofile: { soft: 65536, hard: 65536 }
-    networks: [elk]
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s --cacert config/certs/ca/ca.crt -u elastic:${ELASTIC_PASSWORD} https://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
-      interval: 15s
-      timeout: 10s
-      retries: 20
+      - "9200:9200"
 
-  es-node2:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
-    container_name: es-node2
-    hostname: es-node2
+  elasticsearch-node2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
+    container_name: elasticsearch-node2
     environment:
-      - ES_JAVA_OPTS=${ES_JAVA_OPTS}
-    volumes:
-      - ./config/elasticsearch/es-node2.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
-      - ./certs/runtime:/usr/share/elasticsearch/config/certs:ro
-      - esdata2:/usr/share/elasticsearch/data
-      - snapshots:/usr/share/elasticsearch/snapshots
+      - node.name=es-node2
+      - cluster.name=cyber-cluster
+      - discovery.seed_hosts=elasticsearch
+      - cluster.initial_master_nodes=es-node1,es-node2
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - path.repo=/usr/share/elasticsearch/snapshots
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.certificate=certs/es-http/elasticsearch.crt
+      - xpack.security.http.ssl.key=certs/es-http/elasticsearch.key
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.certificate=certs/es-node2/es-node2.crt
+      - xpack.security.transport.ssl.key=certs/es-node2/es-node2.key
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
     ulimits:
-      memlock: { soft: -1, hard: -1 }
-      nofile: { soft: 65536, hard: 65536 }
-    networks: [elk]
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data_node2:/usr/share/elasticsearch/data
+      - ${SNAPSHOTS_DIR}:/usr/share/elasticsearch/snapshots
+      - ${CERTS_DIR}:/usr/share/elasticsearch/config/certs:ro
     depends_on:
-      es-node1:
-        condition: service_healthy
+      - elasticsearch
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    image: docker.elastic.co/kibana/kibana:8.11.4
     container_name: kibana
     environment:
-      - KIBANA_SYSTEM_PASSWORD=${KIBANA_SYSTEM_PASSWORD}
-      - KIBANA_ENCRYPTION_KEY=${KIBANA_ENCRYPTION_KEY}
+      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_SYSTEM_PASSWORD}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/ca/ca.crt
+      - SERVER_SSL_ENABLED=true
+      - SERVER_SSL_CERTIFICATE=/usr/share/kibana/config/certs/kibana/kibana.crt
+      - SERVER_SSL_KEY=/usr/share/kibana/config/certs/kibana/kibana.key
     volumes:
-      - ./config/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
-      - ./certs/runtime:/usr/share/kibana/config/certs:ro
+      - ${CERTS_DIR}:/usr/share/kibana/config/certs:ro
     ports:
-      - "5601:5601"   # Interface web — HTTPS uniquement
-    networks: [elk]
+      - "5601:5601"
     depends_on:
-      es-node1:
-        condition: service_healthy
+      - elasticsearch
 
 volumes:
-  esdata1:
-  esdata2:
-  snapshots:
-
-networks:
-  elk:
-    driver: bridge
+  es_data:
+    driver: local
+  es_data_node2:
+    driver: local
