@@ -56,4 +56,6 @@ curl ... "https://<ELK_HOST>:9200/_cat/nodes?v&h=name,version"
 
 Les deux nœuds, Kibana, Fleet Server et Client-Lin01 sont en 8.11.4, cluster `green`.
 
+> **Mise à jour :** en réalité, l'agent de Client-Lin01 s'était arrêté en 8.0.0 et a fini *Unhealthy*. La mise à jour à distance n'avait pas abouti. Diagnostic et correction : [phase 09](phase-09-fleet-troubleshooting.md).
+
 Retour au [README](../README.md)
