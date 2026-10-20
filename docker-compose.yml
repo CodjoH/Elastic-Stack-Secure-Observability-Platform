@@ -78,6 +78,11 @@ services:
       - SERVER_SSL_ENABLED=true
       - SERVER_SSL_CERTIFICATE=/usr/share/kibana/config/certs/kibana/kibana.crt
       - SERVER_SSL_KEY=/usr/share/kibana/config/certs/kibana/kibana.key
+      # clés persistantes : sans elles, Kibana en génère de nouvelles à chaque démarrage
+      # et les règles / connecteurs / Cases chiffrés deviennent illisibles (phase 10)
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ESO_KEY}
+      - XPACK_SECURITY_ENCRYPTIONKEY=${KIBANA_SECURITY_KEY}
+      - XPACK_REPORTING_ENCRYPTIONKEY=${KIBANA_REPORTING_KEY}
     volumes:
       - ${CERTS_DIR}:/usr/share/kibana/config/certs:ro
     ports:
