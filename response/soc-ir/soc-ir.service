@@ -1,0 +1,15 @@
+[Unit]
+Description=SOC Lab - réponse à incident automatisée (Cases Kibana)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/soc-ir/soc-ir.env
+ExecStart=/usr/bin/python3 /usr/local/bin/soc-ir.py
+# durcissement : le service n'a besoin que de lire /etc/soc-ir et d'écrire son état et son journal
+ProtectSystem=strict
+ReadWritePaths=/var/lib/soc-ir /var/log
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true

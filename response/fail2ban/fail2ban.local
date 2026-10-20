@@ -1,0 +1,5 @@
+# /etc/fail2ban/fail2ban.local — journaliser dans syslog pour que les bannissements
+# remontent dans ELK (data stream logs-system.syslog, process.name: fail2ban.actions)
+[Definition]
+logtarget = SYSLOG
+loglevel = INFO

@@ -1,0 +1,16 @@
+# /etc/fail2ban/jail.local — confinement automatique des brute force SSH (client Linux)
+[DEFAULT]
+# <ADMIN_IP> = poste d'administration : jamais banni, mais toujours détecté par ELK
+ignoreip = 127.0.0.1/8 ::1 <ADMIN_IP>
+banaction = nftables-multiport
+banaction_allports = nftables-allports
+findtime = 10m
+maxretry = 5
+bantime = 1h
+
+[sshd]
+enabled = true
+port = ssh
+backend = auto
+logpath = /var/log/auth.log
+mode = aggressive
