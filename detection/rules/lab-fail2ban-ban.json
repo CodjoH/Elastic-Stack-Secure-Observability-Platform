@@ -1,0 +1,43 @@
+{
+  "rule_id": "lab-fail2ban-ban",
+  "name": "Réponse auto - IP bannie par fail2ban",
+  "description": "fail2ban a bloqué automatiquement une IP source après un brute force SSH (confinement automatique).",
+  "type": "query",
+  "language": "kuery",
+  "index": [
+    "logs-system.syslog-*"
+  ],
+  "query": "process.name:\"fail2ban.actions\" and message:\"Ban\" and not message:\"Unban\"",
+  "severity": "high",
+  "risk_score": 73,
+  "interval": "1m",
+  "from": "now-2m",
+  "enabled": true,
+  "tags": [
+    "SOC-Lab",
+    "Linux",
+    "Response"
+  ],
+  "author": [
+    "CodjoH"
+  ],
+  "license": "MIT",
+  "max_signals": 100,
+  "threat": [
+    {
+      "framework": "MITRE ATT&CK",
+      "tactic": {
+        "id": "TA0006",
+        "name": "Credential Access",
+        "reference": "https://attack.mitre.org/tactics/TA0006/"
+      },
+      "technique": [
+        {
+          "id": "T1110",
+          "name": "Brute Force",
+          "reference": "https://attack.mitre.org/techniques/T1110/"
+        }
+      ]
+    }
+  ]
+}

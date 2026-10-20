@@ -1,0 +1,43 @@
+{
+  "rule_id": "lab-sudo-command",
+  "name": "Linux - Commande exécutée via sudo",
+  "description": "Une commande a été exécutée avec élévation de privilèges via sudo.",
+  "type": "query",
+  "language": "kuery",
+  "index": [
+    "logs-system.auth-*"
+  ],
+  "query": "event.dataset:\"system.auth\" and log.syslog.appname:\"sudo\" and message:\"COMMAND\"",
+  "severity": "low",
+  "risk_score": 21,
+  "interval": "1m",
+  "from": "now-2m",
+  "enabled": true,
+  "tags": [
+    "SOC-Lab",
+    "Linux",
+    "Authentication"
+  ],
+  "author": [
+    "CodjoH"
+  ],
+  "license": "MIT",
+  "max_signals": 100,
+  "threat": [
+    {
+      "framework": "MITRE ATT&CK",
+      "tactic": {
+        "id": "TA0004",
+        "name": "Privilege Escalation",
+        "reference": "https://attack.mitre.org/tactics/TA0004/"
+      },
+      "technique": [
+        {
+          "id": "T1548",
+          "name": "Abuse Elevation Control Mechanism",
+          "reference": "https://attack.mitre.org/techniques/T1548/"
+        }
+      ]
+    }
+  ]
+}

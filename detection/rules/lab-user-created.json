@@ -1,0 +1,43 @@
+{
+  "rule_id": "lab-user-created",
+  "name": "Linux - Création d'un compte utilisateur",
+  "description": "Un nouveau compte utilisateur local a été créé.",
+  "type": "query",
+  "language": "kuery",
+  "index": [
+    "logs-system.auth-*"
+  ],
+  "query": "event.dataset:\"system.auth\" and log.syslog.appname:\"useradd\" and system.auth.useradd.home:*",
+  "severity": "high",
+  "risk_score": 73,
+  "interval": "1m",
+  "from": "now-2m",
+  "enabled": true,
+  "tags": [
+    "SOC-Lab",
+    "Linux",
+    "Authentication"
+  ],
+  "author": [
+    "CodjoH"
+  ],
+  "license": "MIT",
+  "max_signals": 100,
+  "threat": [
+    {
+      "framework": "MITRE ATT&CK",
+      "tactic": {
+        "id": "TA0003",
+        "name": "Persistence",
+        "reference": "https://attack.mitre.org/tactics/TA0003/"
+      },
+      "technique": [
+        {
+          "id": "T1136",
+          "name": "Create Account",
+          "reference": "https://attack.mitre.org/techniques/T1136/"
+        }
+      ]
+    }
+  ]
+}

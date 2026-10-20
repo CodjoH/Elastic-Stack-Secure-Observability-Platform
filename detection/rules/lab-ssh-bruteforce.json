@@ -1,0 +1,49 @@
+{
+  "rule_id": "lab-ssh-bruteforce",
+  "name": "SSH - Brute force (≥5 échecs en 5 min)",
+  "description": "Au moins 5 échecs d'authentification SSH depuis la même IP source en 5 minutes.",
+  "type": "threshold",
+  "language": "kuery",
+  "index": [
+    "logs-system.auth-*"
+  ],
+  "query": "event.dataset:\"system.auth\" and event.action:\"ssh_login\" and event.outcome:\"failure\"",
+  "threshold": {
+    "field": [
+      "source.ip"
+    ],
+    "value": 5
+  },
+  "severity": "high",
+  "risk_score": 73,
+  "interval": "1m",
+  "from": "now-5m",
+  "enabled": true,
+  "tags": [
+    "SOC-Lab",
+    "Linux",
+    "Authentication"
+  ],
+  "author": [
+    "CodjoH"
+  ],
+  "license": "MIT",
+  "max_signals": 100,
+  "threat": [
+    {
+      "framework": "MITRE ATT&CK",
+      "tactic": {
+        "id": "TA0006",
+        "name": "Credential Access",
+        "reference": "https://attack.mitre.org/tactics/TA0006/"
+      },
+      "technique": [
+        {
+          "id": "T1110",
+          "name": "Brute Force",
+          "reference": "https://attack.mitre.org/techniques/T1110/"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "rule_id": "lab-ssh-root-login",
+  "name": "SSH - Connexion root réussie",
+  "description": "Connexion SSH réussie directement avec le compte root.",
+  "type": "query",
+  "language": "kuery",
+  "index": [
+    "logs-system.auth-*"
+  ],
+  "query": "event.dataset:\"system.auth\" and event.action:\"ssh_login\" and event.outcome:\"success\" and user.name:\"root\"",
+  "severity": "medium",
+  "risk_score": 47,
+  "interval": "1m",
+  "from": "now-2m",
+  "enabled": true,
+  "tags": [
+    "SOC-Lab",
+    "Linux",
+    "Authentication"
+  ],
+  "author": [
+    "CodjoH"
+  ],
+  "license": "MIT",
+  "max_signals": 100,
+  "threat": [
+    {
+      "framework": "MITRE ATT&CK",
+      "tactic": {
+        "id": "TA0001",
+        "name": "Initial Access",
+        "reference": "https://attack.mitre.org/tactics/TA0001/"
+      },
+      "technique": [
+        {
+          "id": "T1078",
+          "name": "Valid Accounts",
+          "reference": "https://attack.mitre.org/techniques/T1078/"
+        }
+      ]
+    }
+  ]
+}

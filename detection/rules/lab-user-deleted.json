@@ -1,0 +1,43 @@
+{
+  "rule_id": "lab-user-deleted",
+  "name": "Linux - Suppression d'un compte utilisateur",
+  "description": "Un compte utilisateur local a été supprimé (possible effacement de traces).",
+  "type": "query",
+  "language": "kuery",
+  "index": [
+    "logs-system.auth-*"
+  ],
+  "query": "event.dataset:\"system.auth\" and log.syslog.appname:\"userdel\" and message:\"delete user\"",
+  "severity": "medium",
+  "risk_score": 47,
+  "interval": "1m",
+  "from": "now-2m",
+  "enabled": true,
+  "tags": [
+    "SOC-Lab",
+    "Linux",
+    "Authentication"
+  ],
+  "author": [
+    "CodjoH"
+  ],
+  "license": "MIT",
+  "max_signals": 100,
+  "threat": [
+    {
+      "framework": "MITRE ATT&CK",
+      "tactic": {
+        "id": "TA0040",
+        "name": "Impact",
+        "reference": "https://attack.mitre.org/tactics/TA0040/"
+      },
+      "technique": [
+        {
+          "id": "T1531",
+          "name": "Account Access Removal",
+          "reference": "https://attack.mitre.org/techniques/T1531/"
+        }
+      ]
+    }
+  ]
+}

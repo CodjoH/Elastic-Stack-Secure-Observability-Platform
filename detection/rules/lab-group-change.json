@@ -1,0 +1,43 @@
+{
+  "rule_id": "lab-group-change",
+  "name": "Linux - Modification de groupe (ajout d'utilisateur)",
+  "description": "Un utilisateur a été ajouté à un groupe local (ex. sudo).",
+  "type": "query",
+  "language": "kuery",
+  "index": [
+    "logs-system.auth-*"
+  ],
+  "query": "event.dataset:\"system.auth\" and log.syslog.appname:(\"usermod\" or \"gpasswd\") and message:\"to group\"",
+  "severity": "medium",
+  "risk_score": 47,
+  "interval": "1m",
+  "from": "now-2m",
+  "enabled": true,
+  "tags": [
+    "SOC-Lab",
+    "Linux",
+    "Authentication"
+  ],
+  "author": [
+    "CodjoH"
+  ],
+  "license": "MIT",
+  "max_signals": 100,
+  "threat": [
+    {
+      "framework": "MITRE ATT&CK",
+      "tactic": {
+        "id": "TA0003",
+        "name": "Persistence",
+        "reference": "https://attack.mitre.org/tactics/TA0003/"
+      },
+      "technique": [
+        {
+          "id": "T1098",
+          "name": "Account Manipulation",
+          "reference": "https://attack.mitre.org/techniques/T1098/"
+        }
+      ]
+    }
+  ]
+}
