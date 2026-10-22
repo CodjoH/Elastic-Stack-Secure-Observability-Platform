@@ -104,17 +104,17 @@ flowchart LR
 └── phases/                   # Journal détaillé des 13 phases
 ```
 
-## 🚀 Déploiement
+## 🚀 Déploiement & validation
 
 **Prérequis :** Docker + Compose, OpenSSL, hôte Linux (Lin01) avec 8 Go de RAM minimum.
 
-| # | Étape | Détail |
-|:---:|---|---|
-| 1 | 🪪 PKI interne (CA, HTTPS, transport mTLS) | [certificates.md](docs/certificates.md) |
-| 2 | 🔐 Renseigner les secrets dans `.env` (jamais versionné) | [.env.example](.env.example) |
-| 3 | 🐳 Démarrer le cluster 2 nœuds + Kibana | `docker compose up -d` |
-| 4 | ⚙️ Installer Fleet Server et enrôler les agents | [Phase 06](phases/phase-06-fleet.md) |
-| 5 | 🚨 Analyse, corrélation & réponse aux incidents | [Phase 12](phases/phase-12-incident-response.md) |
+| # | Étape | Ce qui est vérifié | Preuve |
+|:---:|---|---|---|
+| 1 | 🪪 PKI interne (CA, HTTPS, transport mTLS) | CA inconnue rejetée (anti-MitM), protocoles obsolètes refusés | [`test-tls.sh`](tests/tls/test-tls.sh) |
+| 2 | 🔐 Secrets dans `.env` (jamais versionné) | Requêtes anonymes rejetées, moindre privilège | [`test-authentication.sh`](tests/authentication/test-authentication.sh) |
+| 3 | 🐳 Cluster 2 nœuds + Kibana | Perte d'un nœud sans interruption | [Phase 07](phases/phase-07-cluster.md#test-de-résilience-failover) |
+| 4 | ⚙️ Fleet Server et agents | Ingestion de bout en bout | [`test-ingestion.sh`](tests/ingestion/test-ingestion.sh) |
+| 5 | 🚨 Analyse, corrélation & réponse aux incidents | Brute force : IP bannie, alertes, Cases ouverts avec playbook | [`simulate-attacks.sh`](tests/detection/simulate-attacks.sh) · [`test_soc_ir.py`](tests/response/test_soc_ir.py) |
 
 ```bash
 cp .env.example .env && set -a; . ./.env; set +a
@@ -122,19 +122,7 @@ docker compose up -d
 ./scripts/health-check.sh && ./scripts/verify-tls.sh
 ./scripts/deploy-rules.py && ./scripts/build-dashboard.py
 sudo -E ./response/soc-ir/install.sh
-./tests/detection/simulate-attacks.sh     # validation de bout en bout
 ```
-
-### 🧪 Validation
-
-| Domaine | Vérification | Preuve |
-|---|---|---|
-| 🔑 Authentification | Requêtes anonymes rejetées, moindre privilège | [`test-authentication.sh`](tests/authentication/test-authentication.sh) |
-| 🔒 TLS | CA inconnue rejetée (anti-MitM), protocoles obsolètes refusés | [`test-tls.sh`](tests/tls/test-tls.sh) |
-| 📥 Ingestion | Écriture/lecture de bout en bout | [`test-ingestion.sh`](tests/ingestion/test-ingestion.sh) |
-| 🧱 Résilience | Perte d'un nœud sans interruption | [Phase 07](phases/phase-07-cluster.md#test-de-résilience-failover) |
-| 🚨 Détection → réponse | Brute force : IP bannie, alertes, Cases ouverts | [`simulate-attacks.sh`](tests/detection/simulate-attacks.sh) |
-| 🧠 Logique SOC-IR | Regroupement, playbooks, acquittement | [`test_soc_ir.py`](tests/response/test_soc_ir.py) |
 
 ---
 
