@@ -106,7 +106,7 @@ flowchart LR
 
 ## 🚀 Déploiement & validation
 
-**Prérequis :** Docker + Compose, OpenSSL, hôte Linux avec 8 Go de RAM minimum.
+**Prérequis :** Docker + Compose, OpenSSL, hôte avec 8 Go de RAM minimum.
 
 | # | Étape | Ce qui est vérifié | Preuve |
 |:---:|---|---|---|
