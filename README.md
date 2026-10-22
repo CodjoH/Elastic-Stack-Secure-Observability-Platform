@@ -122,32 +122,78 @@ flowchart LR
 └── phases/                   # Journal détaillé des 13 phases
 ```
 
-## 🚀 Démarrage rapide
+## 🚀 Guide de déploiement
+
+**Prérequis :** Docker et Docker Compose, OpenSSL, un hôte Linux avec au moins 8 Go de RAM (deux nœuds Elasticsearch, Kibana et Fleet Server).
+
+### 1. Générer la PKI interne
+
+Une autorité de certification dédiée signe les certificats de l'API, du transport et de Kibana ([docs/certificates.md](docs/certificates.md)) :
+
+```text
+certs/runtime/              # monté en lecture seule dans les conteneurs
+├── ca/ca.crt
+├── es-http/elasticsearch.crt
+├── es-node1/  es-node2/    # certificats de transport (mTLS)
+└── kibana/kibana.crt
+```
+
+### 2. Configurer l'environnement
+
+Le fichier `.env` contient les secrets d'infrastructure et n'est jamais versionné ([.env.example](.env.example)) :
 
 ```bash
-# 1. Variables d'environnement
-cp .env.example .env && nano .env
+cp .env.example .env
+```
 
-# 2. PKI interne : CA + certificats (voir docs/certificates.md)
+```env
+ELASTIC_PASSWORD=<mot_de_passe_robuste>
+KIBANA_SYSTEM_PASSWORD=<mot_de_passe_kibana_system>
+KIBANA_ESO_KEY=<openssl rand -hex 32>
+CERTS_DIR=/chemin/vers/certs/runtime
+ELK_HOST=<adresse_de_l_hote_central>
+```
 
-# 3. Lancement du cluster et de Kibana
+### 3. Démarrer la stack
+
+```bash
 set -a; . ./.env; set +a
-docker compose up -d
-
-# 4. Vérifications
-./scripts/health-check.sh
-./scripts/verify-tls.sh
+docker compose up -d                      # ou docker-compose up -d (Compose v1)
+./scripts/health-check.sh && ./scripts/verify-tls.sh
 ```
 
-Le déploiement du Fleet Server et l'enrôlement des agents sont décrits en [phase 06](phases/phase-06-fleet.md).
+### 4. Initialiser Fleet Server (agent natif sur l'hôte central)
+
+Générer un jeton de service v8 depuis le conteneur Elasticsearch :
 
 ```bash
-# 5. Couche SOC (clé API Kibana dans .env)
-./scripts/deploy-rules.py                 # règles de détection
-./scripts/build-dashboard.py              # dashboard SOC
-sudo -E ./response/soc-ir/install.sh      # Cases automatiques (hôte central)
-# fail2ban sur chaque client Linux : voir la phase 12
+docker exec -it elasticsearch bin/elasticsearch-service-tokens create elastic/fleet-server fleet-token
 ```
+
+Installer l'Elastic Agent en mode Fleet Server :
+
+```bash
+sudo ./elastic-agent install --url=https://<ELK_HOST>:8220 \
+  --fleet-server-es=https://<ELK_HOST>:9200 \
+  --fleet-server-service-token=<SERVICE_TOKEN> \
+  --fleet-server-policy=<FLEET_SERVER_POLICY_ID> \
+  --certificate-authorities=$CERTS_DIR/ca/ca.crt \
+  --fleet-server-es-ca=$CERTS_DIR/ca/ca.crt \
+  --fleet-server-cert=$CERTS_DIR/kibana/kibana.crt \
+  --fleet-server-cert-key=$CERTS_DIR/kibana/kibana.key
+```
+
+L'enrôlement des agents clients est détaillé en [phase 06](phases/phase-06-fleet.md).
+
+### 5. Activer la couche SOC
+
+```bash
+./scripts/deploy-rules.py                 # règles de détection (clé API Kibana dans .env)
+./scripts/build-dashboard.py              # dashboard SOC
+sudo -E ./response/soc-ir/install.sh      # ouverture automatique des Cases
+```
+
+Installer ensuite fail2ban sur chaque client Linux ([phase 12](phases/phase-12-incident-response.md)), puis valider la chaîne complète avec `./tests/detection/simulate-attacks.sh`.
 
 ## 🧪 Validation
 
@@ -211,16 +257,26 @@ Toutes les captures : [`screenshots/`](screenshots/)
 | 🟠 Règles qui ne déclenchent jamais | Le pipeline System 1.53 ne remplit pas `event.category: iam` / `process.name` | Requêtes réécrites sur les champs réellement indexés ([phase 10](phases/phase-10-detection-engineering.md)) |
 | 🟠 Pas de Case automatique en licence basic | Connecteur Cases indisponible | Service SOC-IR via l'API Cases ([phase 12](phases/phase-12-incident-response.md)) |
 
-## 🎯 Résultat
+## 🏆 Résultats
 
-| Objectif | Résultat |
-|---|---|
-| 🔒 **Zéro flux en clair** | HTTPS/TLS sur toutes les API, **mTLS** entre nœuds, CA racine interne |
-| ⚙️ **Haute disponibilité** | Cluster 2 nœuds avec réplication, panne d'un nœud de données testée sans perte de données |
-| 📡 **Modernisation de la collecte** | Beats remplacés par **Elastic Agent + Fleet Server**, clés d'API rotatives |
-| 🔄 **Cycle de vie maîtrisé** | Montée de version **v7 ➔ v8** sans perte de données ni rupture de collecte |
-| 🚨 **Détection** | 8 règles versionnées, 6 techniques **MITRE ATT&CK**, dashboard SOC de 21 panneaux |
-| 🛡️ **Réponse** | Brute force SSH **bloqué automatiquement** et **Case ouvert avec son playbook** en moins de 2 minutes |
+<div align="center">
+
+| 🔒 **0** | 🧱 **2** | 🎯 **8** | 🧭 **6** | ⚡ **< 2 min** | 📚 **13** |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| flux en clair | nœuds en cluster | règles de détection | techniques ATT&CK | de l'attaque au Case | phases documentées |
+
+</div>
+
+### Avant / Après
+
+| | Avant | Après |
+|---|---|---|
+| **Accès** | anonyme, en HTTP | authentifié, HTTPS et mTLS, moindre privilège |
+| **Architecture** | 1 nœud Elastic 7.17 | cluster de 2 nœuds Elastic 8.11.4, failover testé |
+| **Collecte** | Beats avec un mot de passe sur chaque machine | Elastic Agent piloté par Fleet, clés d'API rotatives |
+| **Détection** | aucune | 8 règles versionnées, alignées sur MITRE ATT&CK |
+| **Réponse** | manuelle | IP bloquée automatiquement et Case ouvert avec son playbook |
+| **Supervision** | dashboards par défaut | dashboard SOC de 21 panneaux généré par script |
 
 **Outils :** `Elasticsearch` `Kibana` `Logstash` `Kafka` `Fleet` `Elastic Agent` `Beats` `Docker` `Docker Compose` `PKI / X.509` `TLS / mTLS` `OpenSSL` `Bash` `Linux` `Python` `fail2ban` `nftables` `systemd` `MITRE ATT&CK`
 
