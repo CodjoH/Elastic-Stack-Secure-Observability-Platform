@@ -6,7 +6,7 @@
 
 **Conception et déploiement d'une plateforme d'observabilité sécurisée basée sur Elastic Stack 8.11, intégrant la centralisation des logs, la détection des menaces à l'aide de règles alignées sur MITRE ATT&CK et la réponse automatisée aux incidents.**
 
-`Elastic Stack 8.11.4` · `Kibana` · `Fleet / Elastic Agent` · `Docker Compose` · `Kafka` · `TLS / mTLS` · `MITRE ATT&CK` · `Python` · `Licence MIT`
+`Elastic Stack 8.11.4` · `Kibana` · `Fleet / Elastic Agent` · `Docker Compose` · `TLS / mTLS` · `MITRE ATT&CK` · `Python` · `Licence MIT`
 
 [Architecture](docs/architecture.md) · [Hardening](docs/security-hardening.md) · [Certificats](docs/certificates.md) · [Sauvegarde](docs/backup-restore.md) · [Détection](detection/README.md) · [Playbooks](docs/playbooks/README.md) · [Phases](phases/) · [Visualisation](#-visualisation) · [Proof](Proof/)
 
@@ -106,7 +106,7 @@ flowchart LR
 
 ## 🚀 Déploiement & validation
 
-**Prérequis :** Docker + Compose, OpenSSL, hôte Linux (Lin01) avec 8 Go de RAM minimum.
+**Prérequis :** Docker + Compose, OpenSSL, hôte Linux avec 8 Go de RAM minimum.
 
 | # | Étape | Ce qui est vérifié | Preuve |
 |:---:|---|---|---|
