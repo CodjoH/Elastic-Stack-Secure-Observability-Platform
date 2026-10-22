@@ -222,13 +222,17 @@ Installer ensuite fail2ban sur chaque client Linux ([phase 12](phases/phase-12-i
 
 ## 🏆 Résultats
 
-<div align="center">
+**Version 2**
 
-| 🔒 **0** | 🧱 **2** | 🎯 **8** | 🧭 **6** | ⚡ **< 2 min** | 📚 **13** |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| flux en clair | nœuds en cluster | règles de détection | techniques ATT&CK | de l'attaque au Case | phases documentées |
+<p align="center">
+  <img src="docs/results-v2.svg" width="800">
+</p>
 
-</div>
+**Version 3**
+
+<p align="center">
+  <img src="docs/results-v3.svg" width="800">
+</p>
 
 ---
 
