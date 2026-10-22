@@ -22,6 +22,18 @@ Trois règles ont guidé le travail : moindre privilège, chiffrement de tous le
 
 Une fois la plateforme sécurisée, elle a été exploitée comme un **SOC** : règles de détection versionnées et mappées sur MITRE ATT&CK, dashboard d'analyste, confinement automatique des attaques SSH et ouverture automatique de Cases avec leur playbook.
 
+## 🎯 Objectifs
+
+- 🔐 Sécuriser l'accès à Kibana et Elasticsearch : authentification obligatoire et moindre privilège.
+- 🔒 Chiffrer les communications HTTP et transport avec TLS et mTLS.
+- 🪪 Mettre en place une PKI interne : autorité de certification et certificats vérifiés.
+- 📊 Maintenir la collecte et l'ingestion des événements à chaque évolution.
+- ⚙️ Déployer Fleet Server et migrer les Beats vers Elastic Agent.
+- 🏗️ Passer à un cluster Elasticsearch à deux nœuds et en tester la résilience.
+- 🔄 Préparer, réaliser et documenter la montée de version de la 7.17 à la 8.11.
+- 🚨 Détecter les menaces avec des règles alignées sur MITRE ATT&CK.
+- 🛡️ Automatiser la réponse aux incidents : confinement, Cases et playbooks.
+
 ---
 
 ## 🏗️ Architecture
