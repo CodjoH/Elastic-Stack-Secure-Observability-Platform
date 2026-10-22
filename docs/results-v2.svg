@@ -12,8 +12,7 @@
 <rect width="1000" height="420" rx="24" fill="#F7F9FB"/>
 
 <!-- EN-TÊTE -->
-<text x="40" y="58" font-family="Arial, sans-serif" font-size="16" font-weight="900" letter-spacing="1" fill="#005571">Elastic SOC</text>
-<text x="40" y="78" font-family="Arial, sans-serif" font-size="10" font-weight="700" letter-spacing=".8" fill="#718493">Migration sécurisée 7.17 → 8.11.4 · résultats mesurés</text>
+<text x="40" y="63" font-family="Arial, sans-serif" font-size="16" font-weight="900" letter-spacing="1" fill="#005571">Elastic SOC</text>
 <rect x="870" y="44" width="92" height="26" rx="13" fill="#FFFFFF" stroke="#E1E7EC"/>
 <circle cx="888" cy="57" r="4" fill="#3D8B67" filter="url(#softGlow)"><animate attributeName="opacity" values="1;.35;1" dur="1.8s" repeatCount="indefinite"/></circle>
 <text x="898" y="61" font-family="Arial, sans-serif" font-size="10" font-weight="800" fill="#3D8B67">validé</text>

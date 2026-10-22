@@ -192,15 +192,15 @@ Installer ensuite fail2ban sur chaque client Linux ([phase 12](phases/phase-12-i
 
 ## 📸 Visualisation
 
-**Fleet : serveur ELK et client en `Healthy`, version 8.11.4**
+🔹 Fleet : serveur ELK et client en `Healthy`, version 8.11.4
 
 ![Fleet : ELK et client en Healthy (8.11.4)](Proof/soc/fleet-healthy.png)
 
-**Les 8 règles de détection actives**
+🔹 Les 8 règles de détection actives
 
 ![Les 8 règles de détection actives](Proof/soc/detection-rules.png)
 
-**Cases ouverts automatiquement par SOC-IR**
+🔹 Cases ouverts automatiquement par SOC-IR
 
 ![Cases ouverts automatiquement par SOC-IR](Proof/soc/cases-list.png)
 
@@ -222,17 +222,19 @@ Installer ensuite fail2ban sur chaque client Linux ([phase 12](phases/phase-12-i
 
 ## 🏆 Résultats
 
-**Version 2**
-
 <p align="center">
   <img src="docs/results-v2.svg" width="800">
 </p>
 
-**Version 3**
+---
 
-<p align="center">
-  <img src="docs/results-v3.svg" width="800">
-</p>
+## 🔗 Documentation
+
+- 📖 [Elasticsearch — sécurité et TLS](https://www.elastic.co/docs/deploy-manage/security/secure-cluster-communications)
+- 📖 [Fleet & Elastic Agent](https://www.elastic.co/docs/reference/fleet/install-fleet-managed-elastic-agent)
+- 📖 [Elastic Security — détection et alertes](https://www.elastic.co/docs/solutions/security/detect-and-alert)
+- 📖 [Kibana — API Cases](https://www.elastic.co/docs/api/doc/kibana/group/endpoint-cases)
+- 📖 [MITRE ATT&CK](https://attack.mitre.org/)
 
 ---
 
