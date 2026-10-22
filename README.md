@@ -8,7 +8,7 @@
 
 `Elastic Stack 8.11.4` · `Kibana` · `Fleet / Elastic Agent` · `Docker Compose` · `Kafka` · `TLS / mTLS` · `MITRE ATT&CK` · `Python` · `Licence MIT`
 
-[Architecture](docs/architecture.md) · [Hardening](docs/security-hardening.md) · [Certificats](docs/certificates.md) · [Sauvegarde](docs/backup-restore.md) · [Détection](detection/README.md) · [Playbooks](docs/playbooks/README.md) · [Phases](#️-feuille-de-route--13-phases) · [Captures](#-captures)
+[Architecture](docs/architecture.md) · [Hardening](docs/security-hardening.md) · [Certificats](docs/certificates.md) · [Sauvegarde](docs/backup-restore.md) · [Détection](detection/README.md) · [Playbooks](docs/playbooks/README.md) · [Phases](phases/) · [Captures](#-captures)
 
 </div>
 
@@ -36,41 +36,23 @@ Une fois la plateforme sécurisée, elle a été exploitée comme un **SOC** : r
 
 ---
 
-## 🏗️ Architecture, détection et réponse
+## 🏗️ Architecture
 
 ```mermaid
-flowchart TB
-    ATK([Attaquant]) -- "brute force SSH" --> SSH
-
-    subgraph CLIENT["① Hôte surveillé · Client-Lin01"]
-        direction LR
-        SSH[sshd · auth.log] --> F2B[fail2ban<br/>nftables :22]
-        SSH --> AG[Elastic Agent]
-        F2B -. "bannissement journalisé" .-> AG
+flowchart LR
+    U[👤 Navigateur] -- "HTTPS :5601" --> K[Kibana v8]
+    K -- "HTTPS :9200" --> N1
+    subgraph CLUSTER["Cluster Elasticsearch v8.11.4"]
+        N1[(es-node1<br/>Master / Data)]
+        N2[(es-node2<br/>Data / Réplicas)]
+        N1 <-- "mTLS :9300" --> N2
     end
-
-    subgraph CENTRAL["② Hôte central"]
-        direction LR
-        FS[Fleet Server] -- "HTTPS :9200" --> N1
-        N1[(es-node1<br/>master / data)] <-- "mTLS :9300" --> N2[(es-node2<br/>data / réplicas)]
-    end
-
-    subgraph SOC["③ Kibana 8.11 · détection et réponse"]
-        direction LR
-        R[8 règles<br/>MITRE ATT&CK] --> AL[Alertes]
-        AL --> D[Dashboard SOC]
-        AL --> IR[SOC-IR] --> CS[Case + playbook]
-    end
-
-    AG -- "HTTPS :8220" --> FS
-    AG -- "HTTPS :9200" --> N1
-    N1 --> R
-    U([Analyste SOC]) -- "HTTPS :5601" --> SOC
+    A[Client-Lin01<br/>Elastic Agent] -- "HTTPS :8220" --> FS[Fleet Server<br/>hôte central]
+    A -- "HTTPS :9200" --> N1
+    FS -- "HTTPS :9200" --> N1
 ```
 
-L'agent du client envoie ses journaux chiffrés au cluster. Les règles de détection lèvent des alertes, que SOC-IR transforme en Cases accompagnés de leur playbook. En parallèle, fail2ban bloque l'attaquant sur l'hôte, et ce bannissement remonte lui aussi dans ELK.
-
-➡️ Détails : [docs/architecture.md](docs/architecture.md) · [règles de détection](detection/README.md) · [playbooks](docs/playbooks/README.md)
+➡️ Détails : [docs/architecture.md](docs/architecture.md)
 
 ## 🔐 Matrice de sécurité
 
@@ -84,25 +66,21 @@ L'agent du client envoie ses journaux chiffrés au cluster. Les règles de déte
 
 ➡️ Détails : [docs/security-hardening.md](docs/security-hardening.md)
 
+## 🚨 Détection & réponse à incident
+
+```mermaid
+flowchart LR
+    ATK[Brute force SSH] --> C[Client-Lin01]
+    C -- "auth.log / syslog" --> AG[Elastic Agent]
+    C -- "fail2ban : IP bannie" --> FW[nftables :22]
+    AG --> R[8 règles de détection<br/>MITRE ATT&CK]
+    R --> AL[Alertes]
+    AL --> IR[SOC-IR<br/>timer 1 min]
+    IR --> CS[Case Kibana<br/>+ playbook]
+    AL --> D[Dashboard SOC]
+```
+
 ---
-
-## 🗺️ Feuille de route : 13 phases
-
-| Phase | Étape | Point clé |
-|:---:|---|---|
-| 00 | [Stabilisation](phases/phase-00-stabilization.md) | Résolution d'une `UnavailableShardsException` sur `.security` |
-| 01 | [Authentification](phases/phase-01-authentication.md) | Fin des accès anonymes, moindre privilège, audit |
-| 02 | [TLS HTTP](phases/phase-02-http-tls.md) | API REST en HTTPS via une CA interne |
-| 03 | [TLS Transport](phases/phase-03-transport-tls.md) | mTLS entre les nœuds |
-| 04 | [Kibana HTTPS](phases/phase-04-kibana-https.md) | HTTPS navigateur + compte `kibana_system` |
-| 05 | [Authentification des Beats](phases/phase-05-beats-authentication.md) | Comptes d'écriture dédiés, keystore |
-| 06 | [Fleet](phases/phase-06-fleet.md) | Migration vers Elastic Agent + Fleet Server |
-| 07 | [Cluster](phases/phase-07-cluster.md) | Ajout d'un 2ᵉ nœud, test de failover |
-| 08 | [Upgrade v8](phases/phase-08-upgrade.md) | Rolling upgrade, mise à niveau des agents à distance |
-| 09 | [Troubleshooting Fleet](phases/phase-09-fleet-troubleshooting.md) | Agent 8.0 bloqué face à une stack 8.11, upgrade impossible, réinstallation |
-| 10 | [Detection Engineering](phases/phase-10-detection-engineering.md) | Règles *as code*, MITRE ATT&CK, validation sur documents réels |
-| 11 | [Dashboard SOC](phases/phase-11-soc-dashboard.md) | 21 panneaux Lens générés par script, export NDJSON |
-| 12 | [Réponse à incident](phases/phase-12-incident-response.md) | fail2ban + Cases automatiques avec playbooks (SOC-IR) |
 
 ## 📂 Structure du dépôt
 
@@ -263,17 +241,13 @@ Toutes les captures : [`screenshots/`](screenshots/)
 
 ## 🏆 Résultats
 
-| | Avant | Après | Impact |
-|---|---|---|:---:|
-| 🔒 **Accès** | ❌ anonyme, en HTTP | ✅ authentifié, HTTPS et mTLS, moindre privilège | **0** flux en clair |
-| 🧱 **Architecture** | ⚠️ 1 nœud Elastic 7.17 | ✅ cluster de 2 nœuds 8.11.4, failover testé | **0** perte de données |
-| 📡 **Collecte** | ⚠️ Beats, un mot de passe par machine | ✅ Elastic Agent piloté par Fleet | clés d'API **rotatives** |
-| 🎯 **Détection** | ❌ aucune | ✅ règles versionnées, alignées sur MITRE ATT&CK | **8** règles · **6** techniques |
-| ⚡ **Réponse** | ❌ manuelle | ✅ IP bloquée et Case ouvert avec son playbook | **< 2 min** |
-| 📊 **Supervision** | ⚠️ dashboards par défaut | ✅ dashboard SOC généré par script | **21** panneaux |
-| 📚 **Documentation** | — | ✅ phases, incidents et tests reproductibles | **13** phases |
+<div align="center">
 
-**Outils :** `Elasticsearch` `Kibana` `Logstash` `Kafka` `Fleet` `Elastic Agent` `Beats` `Docker` `Docker Compose` `PKI / X.509` `TLS / mTLS` `OpenSSL` `Bash` `Linux` `Python` `fail2ban` `nftables` `systemd` `MITRE ATT&CK`
+| 🔒 **0** | 🧱 **2** | 🎯 **8** | 🧭 **6** | ⚡ **< 2 min** | 📚 **13** |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| flux en clair | nœuds en cluster | règles de détection | techniques ATT&CK | de l'attaque au Case | phases documentées |
+
+</div>
 
 ---
 
