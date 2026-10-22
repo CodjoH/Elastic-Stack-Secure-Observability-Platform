@@ -101,8 +101,8 @@ python3 -m unittest discover -s tests/response -v   # logique SOC-IR, sans rése
 
 Résultat sur le lab : IP attaquante bannie, alertes *Échec SSH* et *IP bannie*, Cases ouverts avec leur playbook, aucune alerte medium+ laissée en `open`.
 
-![Cases ouverts par SOC-IR](../screenshots/soc/cases-list.png)
+![Cases ouverts par SOC-IR](../Proof/soc/cases-list.png)
 
-![Case ouvert par SOC-IR avec son playbook](../screenshots/soc/case-playbook.png)
+![Case ouvert par SOC-IR avec son playbook](../Proof/soc/case-playbook.png)
 
 Retour au [README](../README.md)

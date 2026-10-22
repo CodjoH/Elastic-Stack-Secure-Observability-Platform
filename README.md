@@ -8,7 +8,7 @@
 
 `Elastic Stack 8.11.4` · `Kibana` · `Fleet / Elastic Agent` · `Docker Compose` · `Kafka` · `TLS / mTLS` · `MITRE ATT&CK` · `Python` · `Licence MIT`
 
-[Architecture](docs/architecture.md) · [Hardening](docs/security-hardening.md) · [Certificats](docs/certificates.md) · [Sauvegarde](docs/backup-restore.md) · [Détection](detection/README.md) · [Playbooks](docs/playbooks/README.md) · [Phases](phases/) · [Captures](#-captures)
+[Architecture](docs/architecture.md) · [Hardening](docs/security-hardening.md) · [Certificats](docs/certificates.md) · [Sauvegarde](docs/backup-restore.md) · [Détection](detection/README.md) · [Playbooks](docs/playbooks/README.md) · [Phases](phases/) · [Visualisation](#-visualisation) · [Proof](Proof/)]
 
 </div>
 
@@ -100,7 +100,7 @@ flowchart LR
 ├── docs/playbooks/           # Un playbook de réponse par règle
 ├── scripts/                  # health-check, verify-tls, deploy-rules, build-dashboard
 ├── tests/                    # authentication/, tls/, ingestion/, detection/, response/
-├── screenshots/              # architecture/, kibana/, validation/, soc/
+├── Proof/                    # Captures : architecture/, kibana/, validation/, soc/
 └── phases/                   # Journal détaillé des 13 phases
 ```
 
@@ -190,40 +190,21 @@ Installer ensuite fail2ban sur chaque client Linux ([phase 12](phases/phase-12-i
 
 ---
 
-## 📸 Captures
+## 📸 Visualisation
 
-### SOC : détection & réponse
+**Fleet : serveur ELK et client en `Healthy`, version 8.11.4**
 
-![Dashboard SOC](screenshots/soc/soc-dashboard.png)
+![Fleet : ELK et client en Healthy (8.11.4)](Proof/soc/fleet-healthy.png)
 
-| | |
-|:---:|:---:|
-| ![Alertes](screenshots/soc/security-alerts.png) | ![Règles](screenshots/soc/detection-rules.png) |
-| Alertes levées par une attaque SSH simulée | Les 8 règles de détection actives |
-| ![Cases](screenshots/soc/cases-list.png) | ![Case et playbook](screenshots/soc/case-playbook.png) |
-| Cases ouverts automatiquement par SOC-IR | Case avec son playbook et ses alertes |
+**Les 8 règles de détection actives**
 
-### Kibana & Fleet
+![Les 8 règles de détection actives](Proof/soc/detection-rules.png)
 
-| | |
-|:---:|:---:|
-| ![Accueil Kibana](screenshots/kibana/kibana-home-7.17.10.jpg) | ![Connexion Kibana](screenshots/kibana/kibana-login-auth.png) |
-| Accueil Kibana | Connexion avec authentification |
-| ![Agents Fleet](screenshots/kibana/fleet-agents-7.17.10.jpg) | ![Jetons d'enrôlement](screenshots/kibana/fleet-enrollment-tokens.jpg) |
-| Agents enrôlés dans Fleet | Jetons d'enrôlement (secrets floutés) |
-| ![Réplicas](screenshots/kibana/index-management-replicas.jpg) | ![Upgrade Assistant](screenshots/kibana/upgrade-assistant.jpg) |
-| Index en `green` avec réplicas sur 2 nœuds | Upgrade Assistant avant le passage en v8 |
+**Cases ouverts automatiquement par SOC-IR**
 
-### Validation
+![Cases ouverts automatiquement par SOC-IR](Proof/soc/cases-list.png)
 
-| | |
-|:---:|:---:|
-| ![curl auth](screenshots/validation/curl-auth-http.jpg) | ![Auditbeat Filebeat](screenshots/validation/beats-test-auditbeat-filebeat.jpg) |
-| Requête refusée sans identifiants | Auditbeat / Filebeat en TLS 1.3 |
-| ![Metricbeat Packetbeat](screenshots/validation/beats-test-metricbeat-packetbeat.jpg) | ![Heartbeat](screenshots/validation/beats-test-heartbeat.jpg) |
-| Metricbeat / Packetbeat | Heartbeat |
-
-Toutes les captures : [`screenshots/`](screenshots/)
+🔗 Toutes les captures (SOC : détection & réponse, Kibana & Fleet, Validation) : [**Proof**](Proof/)
 
 ---
 

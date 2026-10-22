@@ -7,7 +7,7 @@ La 7.17 est la seule version depuis laquelle on peut passer en 8.x, le cluster �
 - snapshot complet ([backup-restore.md](../docs/backup-restore.md)), le dépôt est monté sur les deux nœuds (`path.repo`)
 - Upgrade Assistant de Kibana : aucun problème critique côté Elasticsearch ni Kibana, quelques avertissements à relire, aucun appel d'API déprécié
 
-![Upgrade Assistant](../screenshots/kibana/upgrade-assistant.jpg)
+![Upgrade Assistant](../Proof/kibana/upgrade-assistant.jpg)
 
 ## Mise à jour nœud par nœud
 

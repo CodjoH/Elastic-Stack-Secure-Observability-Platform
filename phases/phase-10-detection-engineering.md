@@ -57,8 +57,8 @@ Leçon : toujours valider une règle sur un vrai document indexé, pas sur la do
 
 Événements de test générés sur le client (échecs SSH avec un compte inexistant, `sudo`, `useradd` / `usermod` / `userdel` d'un compte jetable) : chaque règle a produit au moins une alerte.
 
-![Règles de détection actives](../screenshots/soc/detection-rules.png)
+![Règles de détection actives](../Proof/soc/detection-rules.png)
 
-![Alertes levées par une attaque SSH simulée](../screenshots/soc/security-alerts.png)
+![Alertes levées par une attaque SSH simulée](../Proof/soc/security-alerts.png)
 
 Retour au [README](../README.md)

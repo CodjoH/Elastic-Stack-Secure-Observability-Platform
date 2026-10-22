@@ -46,7 +46,7 @@ curl ... -X PUT "https://<ELK_HOST>:9200/_all/_settings" -H 'Content-Type: appli
 
 Résultat dans Kibana : tous les index des Beats en `green` avec 1 réplica, ce qui n'est possible qu'avec deux nœuds.
 
-![index en green avec 1 réplica](../screenshots/kibana/index-management-replicas.jpg)
+![index en green avec 1 réplica](../Proof/kibana/index-management-replicas.jpg)
 
 ## Test de panne
 

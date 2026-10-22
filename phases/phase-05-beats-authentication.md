@@ -25,11 +25,11 @@ sudo filebeat keystore add ES_PWD
 
 `test output` sur chaque Beat : connexion OK, chaîne de certificats vérifiée, TLS 1.3, Elasticsearch 7.17.10.
 
-![metricbeat et packetbeat](../screenshots/validation/beats-test-metricbeat-packetbeat.jpg)
+![metricbeat et packetbeat](../Proof/validation/beats-test-metricbeat-packetbeat.jpg)
 
-![auditbeat et filebeat](../screenshots/validation/beats-test-auditbeat-filebeat.jpg)
+![auditbeat et filebeat](../Proof/validation/beats-test-auditbeat-filebeat.jpg)
 
-![heartbeat](../screenshots/validation/beats-test-heartbeat.jpg)
+![heartbeat](../Proof/validation/beats-test-heartbeat.jpg)
 
 ## Limites
 

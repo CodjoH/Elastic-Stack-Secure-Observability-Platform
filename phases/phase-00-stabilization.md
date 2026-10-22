@@ -41,6 +41,6 @@ Ils sont remis à 1 en [phase 07](phase-07-cluster.md) quand le deuxième nœud 
 
 Cluster `green`, Kibana accessible, données des Beats visibles dans Discover. Tout est encore en clair et sans authentification : Kibana s'ouvre directement, sans écran de connexion ni menu utilisateur.
 
-![Kibana 7.17.10 sans authentification](../screenshots/kibana/kibana-home-7.17.10.jpg)
+![Kibana 7.17.10 sans authentification](../Proof/kibana/kibana-home-7.17.10.jpg)
 
 Suite : [phase 01](phase-01-authentication.md)

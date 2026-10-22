@@ -21,7 +21,7 @@ Sans script : Stack Management > Saved objects > Import > [dashboards/soc-overvi
 
 Plage par défaut : 24 h, rafraîchissement automatique chaque minute.
 
-![Dashboard SOC](../screenshots/soc/soc-dashboard.png)
+![Dashboard SOC](../Proof/soc/soc-dashboard.png)
 
 *« Alertes ouvertes : 0 » : toutes les alertes ont été prises en charge par SOC-IR ([phase 12](phase-12-incident-response.md)).*
 

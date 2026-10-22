@@ -75,6 +75,6 @@ timedatectl | grep synchronized   # yes
 
 Les deux agents en 8.11.4, `HEALTHY` dans Fleet, CPU et mémoire remontés pour Client-Lin01.
 
-![Agents Healthy dans Fleet](../screenshots/soc/fleet-healthy.png)
+![Agents Healthy dans Fleet](../Proof/soc/fleet-healthy.png)
 
 Retour au [README](../README.md)

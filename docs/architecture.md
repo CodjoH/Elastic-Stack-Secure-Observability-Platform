@@ -4,7 +4,7 @@
 
 Elastic Stack **7.17.10** sous Docker, un seul nœud (`docker-cluster`), sans authentification ni TLS. Sur la machine cliente Client-Lin01, cinq Beats envoyaient directement vers Elasticsearch : Filebeat, Metricbeat, Auditbeat, Heartbeat et Packetbeat.
 
-![Kibana 7.17.10 au départ](../screenshots/kibana/kibana-home-7.17.10.jpg)
+![Kibana 7.17.10 au départ](../Proof/kibana/kibana-home-7.17.10.jpg)
 
 ## Architecture finale (8.11.4)
 

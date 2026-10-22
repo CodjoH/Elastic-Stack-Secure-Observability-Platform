@@ -41,7 +41,7 @@ sudo ./elastic-agent install --url=https://<ELK_HOST>:8220 \
 
 Les jetons d'enrôlement sont gérés dans Fleet > Enrollment tokens (secrets floutés) :
 
-![jetons d'enrôlement](../screenshots/kibana/fleet-enrollment-tokens.jpg)
+![jetons d'enrôlement](../Proof/kibana/fleet-enrollment-tokens.jpg)
 
 Puis arrêt des Beats :
 
@@ -67,6 +67,6 @@ curl -s --cacert $CERTS_DIR/ca/ca.crt https://<ELK_HOST>:8220/api/status
 
 Les deux agents (l'hôte ELK qui porte le Fleet Server, et Client-Lin01) remontent `Healthy`, encore en 7.17.10. Kibana signale déjà « Upgrade available », traité en phase 08.
 
-![agents Fleet en 7.17.10](../screenshots/kibana/fleet-agents-7.17.10.jpg)
+![agents Fleet en 7.17.10](../Proof/kibana/fleet-agents-7.17.10.jpg)
 
 Suite : [phase 07](phase-07-cluster.md)

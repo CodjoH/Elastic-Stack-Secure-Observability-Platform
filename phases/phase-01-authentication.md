@@ -41,11 +41,11 @@ curl -s -u elastic:$ELASTIC_PASSWORD http://localhost:9200/                     
 
 Depuis Client-Lin01, l'API répond seulement après saisie du mot de passe :
 
-![curl authentifié, encore en HTTP](../screenshots/validation/curl-auth-http.jpg)
+![curl authentifié, encore en HTTP](../Proof/validation/curl-auth-http.jpg)
 
 Côté Kibana, l'écran de connexion apparaît. Les sessions ouvertes avant l'activation ne sont plus valides, d'où le message d'erreur au premier retour sur la page :
 
-![Kibana : connexion obligatoire](../screenshots/kibana/kibana-login-auth.png)
+![Kibana : connexion obligatoire](../Proof/kibana/kibana-login-auth.png)
 
 Ces deux captures montrent aussi le problème restant : l'URL est en `http://`. Le mot de passe saisi passe en clair sur le réseau (Basic Auth = base64), d'où la phase suivante.
 
