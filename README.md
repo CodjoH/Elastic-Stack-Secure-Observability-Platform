@@ -4,19 +4,11 @@
 
 # 🛡️ Elastic Stack — Secure Observability Platform
 
-**Durcissement et migration d'une Elastic Stack v7 mono-nœud vers un cluster distribué v8.11.4 chiffré de bout en bout**
+**Conception et déploiement d'une plateforme d'observabilité sécurisée basée sur Elastic Stack 8.11, intégrant la centralisation des logs, la détection des menaces à l'aide de règles alignées sur MITRE ATT&CK et la réponse automatisée aux incidents.**
 
-![Elastic](https://img.shields.io/badge/Elastic_Stack-8.11.4-005571?style=for-the-badge&logo=elastic&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Docker Compose](https://img.shields.io/badge/Docker_Compose-1D63ED?style=for-the-badge&logo=docker&logoColor=white)
-![Kibana](https://img.shields.io/badge/Kibana-E8478B?style=for-the-badge&logo=kibana&logoColor=white)
-![Kafka](https://img.shields.io/badge/Kafka-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)
-![Logstash](https://img.shields.io/badge/Logstash-00BFB3?style=for-the-badge&logo=logstash&logoColor=white)
-![TLS](https://img.shields.io/badge/TLS%20%2F%20mTLS-Partout-2E7D32?style=for-the-badge&logo=letsencrypt&logoColor=white)
-![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
-![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
+`Elastic Stack 8.11.4` · `Kibana` · `Fleet / Elastic Agent` · `Docker Compose` · `Kafka` · `TLS / mTLS` · `MITRE ATT&CK` · `Python` · `Licence MIT`
 
-[Architecture](docs/architecture.md) · [Hardening](docs/security-hardening.md) · [Certificats](docs/certificates.md) · [Sauvegarde](docs/backup-restore.md) · [Phases](#️-feuille-de-route--9-phases) · [Captures](#-captures)
+[Architecture](docs/architecture.md) · [Hardening](docs/security-hardening.md) · [Certificats](docs/certificates.md) · [Sauvegarde](docs/backup-restore.md) · [Détection](detection/README.md) · [Playbooks](docs/playbooks/README.md) · [Phases](#️-feuille-de-route--13-phases) · [Captures](#-captures)
 
 </div>
 
@@ -28,12 +20,7 @@ Ce projet documente la sécurisation complète et la migration d'une infrastruct
 
 Trois règles ont guidé le travail : moindre privilège, chiffrement de tous les flux et centralisation de la télémétrie. Chaque étape est documentée et testée, avec les incidents rencontrés et leur résolution.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/🔒-Zéro_flux_en_clair-005571?style=flat-square"/>
-  <img src="https://img.shields.io/badge/⚙️-Cluster_2_nœuds-00BFB3?style=flat-square"/>
-  <img src="https://img.shields.io/badge/📡-Fleet_%2B_Elastic_Agent-E8478B?style=flat-square"/>
-  <img src="https://img.shields.io/badge/🔄-v7_→_v8-2E7D32?style=flat-square"/>
-</p>
+Une fois la plateforme sécurisée, elle a été exploitée comme un **SOC** : règles de détection versionnées et mappées sur MITRE ATT&CK, dashboard d'analyste, confinement automatique des attaques SSH et ouverture automatique de Cases avec leur playbook.
 
 ---
 
@@ -67,9 +54,23 @@ flowchart LR
 
 ➡️ Détails : [docs/security-hardening.md](docs/security-hardening.md)
 
+## 🚨 Détection & réponse à incident
+
+```mermaid
+flowchart LR
+    ATK[Brute force SSH] --> C[Client-Lin01]
+    C -- "auth.log / syslog" --> AG[Elastic Agent]
+    C -- "fail2ban : IP bannie" --> FW[nftables :22]
+    AG --> R[8 règles de détection<br/>MITRE ATT&CK]
+    R --> AL[Alertes]
+    AL --> IR[SOC-IR<br/>timer 1 min]
+    IR --> CS[Case Kibana<br/>+ playbook]
+    AL --> D[Dashboard SOC]
+```
+
 ---
 
-## 🗺️ Feuille de route : 9 phases
+## 🗺️ Feuille de route : 13 phases
 
 | Phase | Étape | Point clé |
 |:---:|---|---|
@@ -82,6 +83,10 @@ flowchart LR
 | 06 | [Fleet](phases/phase-06-fleet.md) | Migration vers Elastic Agent + Fleet Server |
 | 07 | [Cluster](phases/phase-07-cluster.md) | Ajout d'un 2ᵉ nœud, test de failover |
 | 08 | [Upgrade v8](phases/phase-08-upgrade.md) | Rolling upgrade, mise à niveau des agents à distance |
+| 09 | [Troubleshooting Fleet](phases/phase-09-fleet-troubleshooting.md) | Agent 8.0 bloqué face à une stack 8.11, upgrade impossible, réinstallation |
+| 10 | [Detection Engineering](phases/phase-10-detection-engineering.md) | Règles *as code*, MITRE ATT&CK, validation sur documents réels |
+| 11 | [Dashboard SOC](phases/phase-11-soc-dashboard.md) | 21 panneaux Lens générés par script, export NDJSON |
+| 12 | [Réponse à incident](phases/phase-12-incident-response.md) | fail2ban + Cases automatiques avec playbooks (SOC-IR) |
 
 ## 📂 Structure du dépôt
 
@@ -93,10 +98,16 @@ flowchart LR
 │   ├── elasticsearch/        # instances.yml (certificats)
 │   ├── kibana/               # Paramètres Kibana (HTTPS + Fleet)
 │   └── beats/                # filebeat.yml, rôle d'écriture des Beats (phase 05)
-├── scripts/                  # health-check.sh, verify-tls.sh
-├── tests/                    # authentication/, tls/, ingestion/
-├── screenshots/              # architecture/, kibana/, validation/
-└── phases/                   # Journal détaillé des 9 phases
+├── detection/rules/          # Règles de détection (JSON, une par fichier)
+├── dashboards/               # Export NDJSON du dashboard SOC
+├── response/
+│   ├── fail2ban/             # Confinement automatique des brute force SSH
+│   └── soc-ir/               # Service de création des Cases + unités systemd
+├── docs/playbooks/           # Un playbook de réponse par règle
+├── scripts/                  # health-check, verify-tls, deploy-rules, build-dashboard
+├── tests/                    # authentication/, tls/, ingestion/, detection/, response/
+├── screenshots/              # architecture/, kibana/, validation/, soc/
+└── phases/                   # Journal détaillé des 13 phases
 ```
 
 ## 🚀 Démarrage rapide
@@ -118,6 +129,14 @@ docker compose up -d
 
 Le déploiement du Fleet Server et l'enrôlement des agents sont décrits en [phase 06](phases/phase-06-fleet.md).
 
+```bash
+# 5. Couche SOC (clé API Kibana dans .env)
+./scripts/deploy-rules.py                 # règles de détection
+./scripts/build-dashboard.py              # dashboard SOC
+sudo -E ./response/soc-ir/install.sh      # Cases automatiques (hôte central)
+# fail2ban sur chaque client Linux : voir la phase 12
+```
+
 ## 🧪 Validation
 
 | Domaine | Ce qui est vérifié | Script |
@@ -126,10 +145,23 @@ Le déploiement du Fleet Server et l'enrôlement des agents sont décrits en [ph
 | TLS | Chaîne de confiance, rejet d'une CA inconnue (anti-MitM), protocoles obsolètes refusés | [`test-tls.sh`](tests/tls/test-tls.sh) |
 | Ingestion | Écriture/lecture de bout en bout, flux des agents | [`test-ingestion.sh`](tests/ingestion/test-ingestion.sh) |
 | Résilience | Perte du nœud secondaire sans interruption | [Phase 07](phases/phase-07-cluster.md#test-de-résilience-failover) |
+| Détection → réponse | Brute force simulé : IP bannie, alertes levées, Cases ouverts | [`simulate-attacks.sh`](tests/detection/simulate-attacks.sh) |
+| Logique SOC-IR | Regroupement, playbooks, acquittement avant rattachement (sans réseau) | [`test_soc_ir.py`](tests/response/test_soc_ir.py) |
 
 ---
 
 ## 📸 Captures
+
+### SOC : détection & réponse
+
+![Dashboard SOC](screenshots/soc/soc-dashboard.png)
+
+| | |
+|:---:|:---:|
+| ![Alertes](screenshots/soc/security-alerts.png) | ![Règles](screenshots/soc/detection-rules.png) |
+| Alertes levées par une attaque SSH simulée | Les 8 règles de détection actives |
+| ![Cases](screenshots/soc/cases-list.png) | ![Case et playbook](screenshots/soc/case-playbook.png) |
+| Cases ouverts automatiquement par SOC-IR | Case avec son playbook et ses alertes |
 
 ### Kibana & Fleet
 
@@ -162,6 +194,10 @@ Toutes les captures : [`screenshots/`](screenshots/)
 | 🔴 `UnavailableShardsException` sur `.security` | Réplicas impossibles à allouer sur un nœud unique | Réplicas système à 0 puis réintégration à chaud du 2ᵉ nœud ([phase 00](phases/phase-00-stabilization.md)) |
 | 🔴 Agent `DEGRADED` après la v8 | Restriction v8 sur les chemins de CA par défaut | Lien symbolique vers `/etc/elastic-agent/certs/elk-ca.crt` ([phase 08](phases/phase-08-upgrade.md)) |
 | 🔴 Conflits inter-versions | Agents v7 face à un Fleet v8 | Upgrade des agents à distance depuis Kibana ([phase 08](phases/phase-08-upgrade.md)) |
+| 🔴 Agent 8.0 Unhealthy, upgrade impossible | Timeout de téléchargement de 120 s, puis paquet local effacé par l'agent 8.0 | Réinstallation propre en 8.11.4 + réaffectation de policy ([phase 09](phases/phase-09-fleet-troubleshooting.md)) |
+| 🟠 Aucun log d'authentification | Debian 12 n'écrit plus `/var/log/auth.log` (journald seul) | rsyslog au format classique ([phase 10](phases/phase-10-detection-engineering.md)) |
+| 🟠 Règles qui ne déclenchent jamais | Le pipeline System 1.53 ne remplit pas `event.category: iam` / `process.name` | Requêtes réécrites sur les champs réellement indexés ([phase 10](phases/phase-10-detection-engineering.md)) |
+| 🟠 Pas de Case automatique en licence basic | Connecteur Cases indisponible | Service SOC-IR via l'API Cases ([phase 12](phases/phase-12-incident-response.md)) |
 
 ## 🎯 Résultat
 
@@ -171,14 +207,21 @@ Toutes les captures : [`screenshots/`](screenshots/)
 | ⚙️ **Haute disponibilité** | Cluster 2 nœuds avec réplication, panne d'un nœud de données testée sans perte de données |
 | 📡 **Modernisation de la collecte** | Beats remplacés par **Elastic Agent + Fleet Server**, clés d'API rotatives |
 | 🔄 **Cycle de vie maîtrisé** | Montée de version **v7 ➔ v8** sans perte de données ni rupture de collecte |
+| 🚨 **Détection** | 8 règles versionnées, 6 techniques **MITRE ATT&CK**, dashboard SOC de 21 panneaux |
+| 🛡️ **Réponse** | Brute force SSH **bloqué automatiquement** et **Case ouvert avec son playbook** en moins de 2 minutes |
 
-**Outils :** `Elasticsearch` `Kibana` `Logstash` `Kafka` `Fleet` `Elastic Agent` `Beats` `Docker` `Docker Compose` `PKI / X.509` `TLS / mTLS` `OpenSSL` `Bash` `Linux`
+**Outils :** `Elasticsearch` `Kibana` `Logstash` `Kafka` `Fleet` `Elastic Agent` `Beats` `Docker` `Docker Compose` `PKI / X.509` `TLS / mTLS` `OpenSSL` `Bash` `Linux` `Python` `fail2ban` `nftables` `systemd` `MITRE ATT&CK`
 
 ---
 
 <div align="center">
 
-📄 Licence [MIT](LICENSE) · **[CodjoH](https://github.com/CodjoH)**
+<p align="center">
+  🛡️ <strong>Hubert Codjo</strong><br>
+  <sub>Cybersecurity Engineer • SOC Analyst • Blue Team</sub><br><br>
+  📧 <a href="mailto:houet.hubert@gmail.com"><strong>Click to contact me</strong></a><br><br>
+  ─ · ─<br><br>
+</p>
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:00BFB3,100:005571&height=100&section=footer" width="100%"/>
 
