@@ -16,11 +16,11 @@
 
 ## 📌 Présentation
 
-Ce projet documente la sécurisation complète et la migration d'une infrastructure Elastic Stack, d'une topologie v7 standard vers une architecture distribuée v8.11.4.
+Ce projet présente la sécurisation complète et la migration d'une infrastructure Elastic Stack, d'un nœud unique en version 7.17 vers un cluster distribué en version 8.11.4.
 
-Trois règles ont guidé le travail : moindre privilège, chiffrement de tous les flux et centralisation de la télémétrie. Chaque étape est documentée et testée, avec les incidents rencontrés et leur résolution.
+Trois principes ont guidé le travail : moindre privilège, chiffrement de tous les flux et centralisation de la télémétrie. Chaque étape est documentée et testée, avec les incidents rencontrés et leur résolution.
 
-Une fois la plateforme sécurisée, elle a été exploitée comme un **SOC** : règles de détection versionnées et mappées sur MITRE ATT&CK, dashboard d'analyste, confinement automatique des attaques SSH et ouverture automatique de Cases avec leur playbook.
+Une fois sécurisée, la plateforme a été exploitée comme un SOC : règles de détection versionnées et alignées sur MITRE ATT&CK, tableau de bord d'analyse, confinement automatique des attaques SSH et ouverture de Cases accompagnés de leur playbook.
 
 ## 🎯 Objectifs
 
