@@ -110,11 +110,11 @@ flowchart LR
 
 | # | Étape | Détail |
 |:---:|---|---|
-| 1 | 🪪 Générer la PKI interne (CA, HTTP, transport mTLS, Kibana) | [certificates.md](docs/certificates.md) |
+| 1 | 🪪 PKI interne (CA, HTTPS, transport mTLS) | [certificates.md](docs/certificates.md) |
 | 2 | 🔐 Renseigner les secrets dans `.env` (jamais versionné) | [.env.example](.env.example) |
 | 3 | 🐳 Démarrer le cluster 2 nœuds + Kibana | `docker compose up -d` |
 | 4 | ⚙️ Installer Fleet Server et enrôler les agents | [Phase 06](phases/phase-06-fleet.md) |
-| 5 | 🚨 Activer la couche SOC : règles, dashboard, SOC-IR, fail2ban | [Phase 12](phases/phase-12-incident-response.md) |
+| 5 | 🚨 Analyse, corrélation & réponse aux incidents | [Phase 12](phases/phase-12-incident-response.md) |
 
 ```bash
 cp .env.example .env && set -a; . ./.env; set +a
