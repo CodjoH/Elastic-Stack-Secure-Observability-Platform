@@ -36,23 +36,41 @@ Une fois la plateforme sécurisée, elle a été exploitée comme un **SOC** : r
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture, détection et réponse
 
 ```mermaid
-flowchart LR
-    U[👤 Navigateur] -- "HTTPS :5601" --> K[Kibana v8]
-    K -- "HTTPS :9200" --> N1
-    subgraph CLUSTER["Cluster Elasticsearch v8.11.4"]
-        N1[(es-node1<br/>Master / Data)]
-        N2[(es-node2<br/>Data / Réplicas)]
-        N1 <-- "mTLS :9300" --> N2
+flowchart TB
+    ATK([Attaquant]) -- "brute force SSH" --> SSH
+
+    subgraph CLIENT["① Hôte surveillé · Client-Lin01"]
+        direction LR
+        SSH[sshd · auth.log] --> F2B[fail2ban<br/>nftables :22]
+        SSH --> AG[Elastic Agent]
+        F2B -. "bannissement journalisé" .-> AG
     end
-    A[Client-Lin01<br/>Elastic Agent] -- "HTTPS :8220" --> FS[Fleet Server<br/>hôte central]
-    A -- "HTTPS :9200" --> N1
-    FS -- "HTTPS :9200" --> N1
+
+    subgraph CENTRAL["② Hôte central"]
+        direction LR
+        FS[Fleet Server] -- "HTTPS :9200" --> N1
+        N1[(es-node1<br/>master / data)] <-- "mTLS :9300" --> N2[(es-node2<br/>data / réplicas)]
+    end
+
+    subgraph SOC["③ Kibana 8.11 · détection et réponse"]
+        direction LR
+        R[8 règles<br/>MITRE ATT&CK] --> AL[Alertes]
+        AL --> D[Dashboard SOC]
+        AL --> IR[SOC-IR] --> CS[Case + playbook]
+    end
+
+    AG -- "HTTPS :8220" --> FS
+    AG -- "HTTPS :9200" --> N1
+    N1 --> R
+    U([Analyste SOC]) -- "HTTPS :5601" --> SOC
 ```
 
-➡️ Détails : [docs/architecture.md](docs/architecture.md)
+L'agent du client envoie ses journaux chiffrés au cluster. Les règles de détection lèvent des alertes, que SOC-IR transforme en Cases accompagnés de leur playbook. En parallèle, fail2ban bloque l'attaquant sur l'hôte, et ce bannissement remonte lui aussi dans ELK.
+
+➡️ Détails : [docs/architecture.md](docs/architecture.md) · [règles de détection](detection/README.md) · [playbooks](docs/playbooks/README.md)
 
 ## 🔐 Matrice de sécurité
 
@@ -65,20 +83,6 @@ flowchart LR
 | Agents ➔ Fleet | 8220 | HTTPS | Clés d'API rotatives générées par Fleet |
 
 ➡️ Détails : [docs/security-hardening.md](docs/security-hardening.md)
-
-## 🚨 Détection & réponse à incident
-
-```mermaid
-flowchart LR
-    ATK[Brute force SSH] --> C[Client-Lin01]
-    C -- "auth.log / syslog" --> AG[Elastic Agent]
-    C -- "fail2ban : IP bannie" --> FW[nftables :22]
-    AG --> R[8 règles de détection<br/>MITRE ATT&CK]
-    R --> AL[Alertes]
-    AL --> IR[SOC-IR<br/>timer 1 min]
-    IR --> CS[Case Kibana<br/>+ playbook]
-    AL --> D[Dashboard SOC]
-```
 
 ---
 
@@ -259,24 +263,15 @@ Toutes les captures : [`screenshots/`](screenshots/)
 
 ## 🏆 Résultats
 
-<div align="center">
-
-| 🔒 **0** | 🧱 **2** | 🎯 **8** | 🧭 **6** | ⚡ **< 2 min** | 📚 **13** |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| flux en clair | nœuds en cluster | règles de détection | techniques ATT&CK | de l'attaque au Case | phases documentées |
-
-</div>
-
-### Avant / Après
-
-| | Avant | Après |
-|---|---|---|
-| **Accès** | anonyme, en HTTP | authentifié, HTTPS et mTLS, moindre privilège |
-| **Architecture** | 1 nœud Elastic 7.17 | cluster de 2 nœuds Elastic 8.11.4, failover testé |
-| **Collecte** | Beats avec un mot de passe sur chaque machine | Elastic Agent piloté par Fleet, clés d'API rotatives |
-| **Détection** | aucune | 8 règles versionnées, alignées sur MITRE ATT&CK |
-| **Réponse** | manuelle | IP bloquée automatiquement et Case ouvert avec son playbook |
-| **Supervision** | dashboards par défaut | dashboard SOC de 21 panneaux généré par script |
+| | Avant | Après | Impact |
+|---|---|---|:---:|
+| 🔒 **Accès** | ❌ anonyme, en HTTP | ✅ authentifié, HTTPS et mTLS, moindre privilège | **0** flux en clair |
+| 🧱 **Architecture** | ⚠️ 1 nœud Elastic 7.17 | ✅ cluster de 2 nœuds 8.11.4, failover testé | **0** perte de données |
+| 📡 **Collecte** | ⚠️ Beats, un mot de passe par machine | ✅ Elastic Agent piloté par Fleet | clés d'API **rotatives** |
+| 🎯 **Détection** | ❌ aucune | ✅ règles versionnées, alignées sur MITRE ATT&CK | **8** règles · **6** techniques |
+| ⚡ **Réponse** | ❌ manuelle | ✅ IP bloquée et Case ouvert avec son playbook | **< 2 min** |
+| 📊 **Supervision** | ⚠️ dashboards par défaut | ✅ dashboard SOC généré par script | **21** panneaux |
+| 📚 **Documentation** | — | ✅ phases, incidents et tests reproductibles | **13** phases |
 
 **Outils :** `Elasticsearch` `Kibana` `Logstash` `Kafka` `Fleet` `Elastic Agent` `Beats` `Docker` `Docker Compose` `PKI / X.509` `TLS / mTLS` `OpenSSL` `Bash` `Linux` `Python` `fail2ban` `nftables` `systemd` `MITRE ATT&CK`
 
